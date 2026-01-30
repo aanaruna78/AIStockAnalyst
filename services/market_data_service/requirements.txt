@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+dhanhq
+pandas
+numpy
+ta-lib
+yfinance
+pydantic-settings

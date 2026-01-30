@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]==0.34.0
+websockets==14.0
+wsproto==1.2.0
+httpx
+beautifulsoup4
+lxml
+robots
+redis
+fake-useragent
+simhash
+python-dateutil
+pandas
+APScheduler

@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env/
+.venv/
+
+# Logs
+*.log
+logs/
+
+# Misc
+.DS_Store
+node_modules/
+dist/
+build/
+.next/

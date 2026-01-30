@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]==0.34.0
+websockets==14.0
+wsproto==1.2.0
+pydantic
+pandas
+numpy
+pydantic-settings
+httpx

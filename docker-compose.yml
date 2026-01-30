@@ -1,0 +1,105 @@
+services:
+  api-gateway:
+    build: ./services/api_gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/api_gateway:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infrastructure/docker/frontend.Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+  ingestion-service:
+    build: ./services/ingestion_service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/ingestion_service:/app
+      - ./shared:/app/shared
+      - ./data:/app/data
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  signal-processing:
+    build: ./services/signal_processing
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/signal_processing:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  market-data-service:
+    build: ./services/market_data_service
+    ports:
+      - "18003:8000"
+    volumes:
+      - ./services/market_data_service:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+      - DHAN_CLIENT_ID=${DHAN_CLIENT_ID}
+      - DHAN_ACCESS_TOKEN=${DHAN_ACCESS_TOKEN}
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  recommendation-engine:
+    build: ./services/recommendation_engine
+    ports:
+      - "18004:8000"
+    volumes:
+      - ./services/recommendation_engine:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  ai-model-service:
+    build: ./services/ai_model_service
+    ports:
+      - "18005:8000"
+    volumes:
+      - ./services/ai_model_service:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+      - PRIMARY_AI_PROVIDER=gemini
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  alert-service:
+    build: ./services/alert_service
+    ports:
+      - "18006:8000"
+    volumes:
+      - ./services/alert_service:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  prediction-service:
+    build: ./services/prediction_service
+    ports:
+      - "18007:8000"
+    volumes:
+      - ./services/prediction_service:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
