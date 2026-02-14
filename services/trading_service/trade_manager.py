@@ -2,7 +2,7 @@ import json
 import os
 import sys
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 import uuid
 
 # Fix path to import shared models

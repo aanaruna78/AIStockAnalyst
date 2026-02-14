@@ -85,7 +85,7 @@ async def test_rationale():
         
         result_empty = await generate_recommendation(req_empty)
         print("\n--- Result (Empty Signals) ---")
-        rec_empty = result_empty.get('recommendation', result_empty) # fallback if in root
+        result_empty.get('recommendation', result_empty) # fallback if in root
         if "recommendation" in result_empty:
              print(f"Rationale: {result_empty['recommendation'].get('rationale')}")
         else:

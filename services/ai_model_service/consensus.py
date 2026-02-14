@@ -9,7 +9,7 @@ class ConsensusEngine:
         scores = [obj["sentiment_score"] for obj in model_outputs]
         confidences = [obj["confidence"] for obj in model_outputs]
         
-        avg_score = np.mean(scores)
+        np.mean(scores)
         weighted_conf = np.average(scores, weights=confidences)
         
         # Agreement: standard deviation (lower is better)

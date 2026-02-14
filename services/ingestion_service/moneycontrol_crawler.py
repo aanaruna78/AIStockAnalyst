@@ -1,7 +1,5 @@
 from base_crawler import BaseCrawler
-from bs4 import BeautifulSoup
 import logging
-import re
 import httpx
 
 logger = logging.getLogger("MoneycontrolCrawler")

@@ -8,7 +8,7 @@ Marubozu, Harami, Three White Soldiers, Three Black Crows, etc.
 
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 
 def detect_patterns(df: pd.DataFrame) -> List[Dict]:
@@ -21,16 +21,16 @@ def detect_patterns(df: pd.DataFrame) -> List[Dict]:
         return []
 
     patterns = []
-    o, h, l, c = df["open"].values, df["high"].values, df["low"].values, df["close"].values
+    o, h, low, c = df["open"].values, df["high"].values, df["low"].values, df["close"].values
     body = c - o
     body_abs = np.abs(body)
     upper_shadow = h - np.maximum(o, c)
-    lower_shadow = np.minimum(o, c) - l
-    total_range = h - l
+    lower_shadow = np.minimum(o, c) - low
+    total_range = h - low
 
     # Prevent division by zero
     total_range = np.where(total_range == 0, 0.0001, total_range)
-    body_abs_safe = np.where(body_abs == 0, 0.0001, body_abs)
+    np.where(body_abs == 0, 0.0001, body_abs)
 
     i = len(df) - 1  # Analyze latest candle primarily
 
@@ -157,7 +157,7 @@ def detect_patterns(df: pd.DataFrame) -> List[Dict]:
 
         # Piercing Line
         if (body[i - 1] < 0 and body[i] > 0 and
-                o[i] < l[i - 1] and
+                o[i] < low[i - 1] and
                 c[i] > (o[i - 1] + c[i - 1]) / 2):
             patterns.append({
                 "name": "Piercing Line",
@@ -256,12 +256,12 @@ def compute_support_resistance(df: pd.DataFrame, window: int = 20) -> Dict:
             supports.append(float(lows[j]))
 
     # Also add classic pivot points
-    h, l, c_val = float(df["high"].iloc[-1]), float(df["low"].iloc[-1]), float(df["close"].iloc[-1])
-    pivot = (h + l + c_val) / 3
-    r1 = 2 * pivot - l
+    h, low, c_val = float(df["high"].iloc[-1]), float(df["low"].iloc[-1]), float(df["close"].iloc[-1])
+    pivot = (h + low + c_val) / 3
+    r1 = 2 * pivot - low
     s1 = 2 * pivot - h
-    r2 = pivot + (h - l)
-    s2 = pivot - (h - l)
+    r2 = pivot + (h - low)
+    s2 = pivot - (h - low)
 
     supports.extend([s1, s2])
     resistances.extend([r1, r2])

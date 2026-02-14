@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 import logging
 
 logger = logging.getLogger("PriceWatcher")
@@ -8,7 +8,7 @@ class PriceWatcher:
         """
         Check if any trade levels (Entry, Target, SL) have been hit.
         """
-        symbol = recommendation["symbol"]
+        recommendation["symbol"]
         direction = recommendation["direction"]
         
         # 1. Target Hit

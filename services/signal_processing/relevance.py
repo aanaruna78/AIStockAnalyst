@@ -1,4 +1,3 @@
-import re
 
 class RelevanceScorer:
     def __init__(self):

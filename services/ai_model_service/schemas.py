@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Dict, Any
 
 class SentimentAnalysisOutput(BaseModel):
     symbol: str

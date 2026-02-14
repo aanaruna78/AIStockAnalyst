@@ -92,17 +92,17 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> Dict:
     if len(df) < period * 2:
         return {"adx": 0, "plus_di": 0, "minus_di": 0, "trend_strength": "weak"}
 
-    h, l, c = df["high"], df["low"], df["close"]
+    h, low, c = df["high"], df["low"], df["close"]
     plus_dm = h.diff()
-    minus_dm = -l.diff()
+    minus_dm = -low.diff()
 
     plus_dm = plus_dm.where((plus_dm > minus_dm) & (plus_dm > 0), 0.0)
     minus_dm = minus_dm.where((minus_dm > plus_dm) & (minus_dm > 0), 0.0)
 
     tr = pd.concat([
-        h - l,
+        h - low,
         (h - c.shift()).abs(),
-        (l - c.shift()).abs()
+        (low - c.shift()).abs()
     ], axis=1).max(axis=1)
 
     atr = tr.rolling(window=period).mean()
@@ -128,11 +128,11 @@ def compute_ema(series: pd.Series, span: int) -> float:
 
 
 def compute_atr(df: pd.DataFrame, period: int = 14) -> float:
-    h, l, c = df["high"], df["low"], df["close"]
+    h, low, c = df["high"], df["low"], df["close"]
     tr = pd.concat([
-        h - l,
+        h - low,
         (h - c.shift()).abs(),
-        (l - c.shift()).abs()
+        (low - c.shift()).abs()
     ], axis=1).max(axis=1)
     return float(tr.rolling(window=period).mean().iloc[-1])
 

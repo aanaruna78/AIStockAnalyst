@@ -147,7 +147,8 @@ class GlobalMarketCrawler(BaseCrawler):
                         "change": round(change, 2),
                         "change_pct": round(change_pct, 2)
                     })
-                except: continue
+                except Exception:
+                    continue
         except Exception as e:
             logger.error(f"Error in fetch_indices_live: {e}")
         return results

@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -9,6 +9,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 import uuid
 from datetime import datetime
+
+ADMIN_EMAILS = {"aanaruna@gmail.com"}
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
@@ -27,6 +29,13 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     user = users_db.get(email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+async def require_admin(user: User = Depends(get_current_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
 # In-memory user store for initial local dev
@@ -98,6 +107,7 @@ async def google_login(request_body: GoogleLoginRequest, request: Request):
                 full_name=full_name,
                 google_id=google_id,
                 picture=picture,
+                is_admin=email in ADMIN_EMAILS,
                 login_history=[login_entry]
             )
             users_db[email] = user
@@ -119,6 +129,7 @@ async def google_login(request_body: GoogleLoginRequest, request: Request):
                 "full_name": user.full_name,
                 "email": user.email,
                 "picture": user.picture,
+                "is_admin": user.is_admin,
                 "onboarded": user.onboarded,
                 "preferences": user.preferences.model_dump() if user.preferences else {}
             }
@@ -152,3 +163,40 @@ async def get_login_history(user: User = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     return {"history": user.login_history[-20:]}
+
+# ─── Admin Endpoints ──────────────────────────────────────────────
+
+@router.get("/admin/users")
+async def admin_list_users(admin: User = Depends(require_admin)):
+    """List all registered users (admin only)."""
+    users = []
+    for u in users_db.values():
+        users.append({
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name,
+            "picture": u.picture,
+            "is_admin": u.is_admin,
+            "onboarded": u.onboarded,
+            "google_id": u.google_id is not None,
+            "login_count": len(u.login_history),
+            "last_login": u.login_history[-1]["timestamp"] if u.login_history else None,
+            "created_at": u.login_history[0]["timestamp"] if u.login_history else None,
+        })
+    return users
+
+@router.get("/admin/users/{user_email}/audit")
+async def admin_user_audit(user_email: str, admin: User = Depends(require_admin)):
+    """Get full audit log for a specific user (admin only)."""
+    target = users_db.get(user_email)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "email": target.email,
+        "full_name": target.full_name,
+        "picture": target.picture,
+        "is_admin": target.is_admin,
+        "onboarded": target.onboarded,
+        "preferences": target.preferences.model_dump() if target.preferences else {},
+        "login_history": target.login_history
+    }

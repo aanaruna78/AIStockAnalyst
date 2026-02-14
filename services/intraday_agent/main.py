@@ -15,7 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import httpx
 import os
-import json
 from datetime import datetime, time as dtime
 from contextlib import asynccontextmanager
 from typing import Dict, List, Optional
@@ -130,7 +129,7 @@ class IntradayAgent:
                 resp = await client.get(f"{CHART_ANALYSIS_URL}/analyze/{symbol}")
                 if resp.status_code == 200:
                     return resp.json()
-        except:
+        except Exception:
             pass  # Chart service may not be running yet
         return None
 
@@ -169,7 +168,7 @@ class IntradayAgent:
             return False
 
         conviction = rec.get("conviction", 0)
-        rationale = rec.get("rationale", "") or rec.get("summary", "")
+        rec.get("rationale", "") or rec.get("summary", "")
         quantity = max(1, int(MAX_CAPITAL_PER_TRADE / entry))
 
         try:

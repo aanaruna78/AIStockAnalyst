@@ -1,10 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import Dict, Any
 from model_router import model_router
 from prompts import prompt_registry
 import logging
-import json
 
 app = FastAPI(title="SignalForge AI Model Service")
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +24,7 @@ async def run_inference(request: InferenceRequest):
     
     # 1. Get Prompt
     try:
-        prompt = prompt_registry.get_prompt(request.task, **request.payload)
+        prompt_registry.get_prompt(request.task, **request.payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

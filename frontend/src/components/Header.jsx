@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, Box, Button, IconButton, Avatar, Menu, MenuItem, Tooltip, Divider, alpha } from '@mui/material';
-import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap } from 'lucide-react';
+import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap, Shield } from 'lucide-react';
 import { useColorMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -118,6 +118,11 @@ const Header = () => {
                                     </Box>
                                 </Box>
                                 <Divider />
+                                {user.is_admin && (
+                                    <MenuItem onClick={() => { handleMenuClose(); navigate('/admin'); }}>
+                                        <Shield size={16} style={{ marginRight: 12, color: '#ef4444' }} /> Admin Console
+                                    </MenuItem>
+                                )}
                                 <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
                                     <UserIcon size={16} style={{ marginRight: 12 }} /> Profile & Preferences
                                 </MenuItem>

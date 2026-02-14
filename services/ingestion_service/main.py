@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI
 from source_registry import SOURCE_REGISTRY, get_source_by_id
 from valuepickr_crawler import ValuePickrCrawler
 from tradingview_crawler import TradingViewCrawler
@@ -11,7 +11,7 @@ from provenance import ProvenanceTracker
 from health_monitor import health_monitor
 import logging
 import asyncio
-from typing import List, Set, Optional
+from typing import Set
 from fastapi import WebSocket, WebSocketDisconnect, BackgroundTasks
 from batch_job import run_batch
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

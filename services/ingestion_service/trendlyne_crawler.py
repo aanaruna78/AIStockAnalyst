@@ -1,8 +1,6 @@
 from base_crawler import BaseCrawler
 from bs4 import BeautifulSoup
 import logging
-import re
-from datetime import datetime
 
 logger = logging.getLogger("TrendlyneCrawler")
 

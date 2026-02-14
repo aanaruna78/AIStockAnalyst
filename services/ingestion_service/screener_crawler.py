@@ -1,6 +1,6 @@
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 from bs4 import BeautifulSoup
 from base_crawler import BaseCrawler
 

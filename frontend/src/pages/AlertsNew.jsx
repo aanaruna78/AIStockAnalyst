@@ -8,12 +8,12 @@ import {
     Bell, BellOff, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown,
     AlertTriangle, CheckCircle, Clock, RefreshCw, Filter, Trash2, Eye
 } from 'lucide-react';
-import { fetchAlerts, fetchRecommendations } from '../services/api';
-import { isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, formatINR, timeAgo, getConvictionLevel } from '../utils/formatters';
+import { fetchAlerts } from '../services/api';
+import { isBullish, getDirectionColor, getDirectionBg, timeAgo, getConvictionLevel } from '../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 
 const Alerts = () => {
-    const theme = useTheme();
+    const _theme = useTheme();
     const navigate = useNavigate();
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -140,11 +140,11 @@ const Alerts = () => {
             ) : (
                 <Stack spacing={1.5}>
                     {filteredAlerts.map((alert) => {
-                        const bullish = isBullish(alert.direction);
+                        const _bullish = isBullish(alert.direction);
                         const dirColor = getDirectionColor(alert.direction);
-                        const severity = getSeverityColor(alert.severity);
+                        const _severity = getSeverityColor(alert.severity);
                         const conviction = alert.conviction || 0;
-                        const convLevel = getConvictionLevel(conviction);
+                        const _convLevel = getConvictionLevel(conviction);
 
                         return (
                             <Card key={alert.id} sx={{

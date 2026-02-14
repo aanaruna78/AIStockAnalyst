@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
 class LevelCalculator:
     def __init__(self, min_rr: float = 2.0):
@@ -15,8 +15,10 @@ class LevelCalculator:
         # If VIX is high (e.g. 20+), widen the levels to avoid premature stop-outs
         # and capture larger volatility swings.
         multiplier = 1.0
-        if vix > 20: multiplier = 1.2
-        if vix > 25: multiplier = 1.5
+        if vix > 20:
+            multiplier = 1.2
+        if vix > 25:
+            multiplier = 1.5
         
         # SL = 1.0 * ATR * multiplier (realistic swing trade stop-loss)
         stop_loss_dist = 1.0 * atr * multiplier

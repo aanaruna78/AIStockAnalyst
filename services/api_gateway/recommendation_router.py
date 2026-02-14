@@ -1,11 +1,9 @@
 from typing import Optional
 import httpx
 import websockets
-import asyncio
 from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from shared.config import settings
 from auth_router import get_current_user, oauth2_scheme
-from shared.models import User
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 

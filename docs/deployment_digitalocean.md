@@ -73,11 +73,31 @@ Create `.env` in project root (same folder as `docker-compose.yml`):
 
 ```bash
 cat > .env <<'EOF'
+# ── Broker / API Keys ──
 DHAN_CLIENT_ID=your_dhan_client_id
 DHAN_ACCESS_TOKEN=your_dhan_access_token
 GOOGLE_API_KEY=your_google_api_key
+
+# ── Google OAuth (required for login) ──
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# ── Admin (comma-separated emails that get admin console access) ──
+ADMIN_EMAILS=you@example.com
 EOF
 ```
+
+Create `frontend/.env` for the Vite build:
+
+```bash
+cat > frontend/.env <<'EOF'
+VITE_API_BASE_URL=https://sf.thinkhivelabs.com/api/v1
+VITE_WS_BASE_URL=wss://sf.thinkhivelabs.com/api/v1
+VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+EOF
+```
+
+> **Note:** Never commit `.env` files. Templates are in `.env.template` and `frontend/.env.example`.
 
 ## 4) Deploy Using Script
 
@@ -119,6 +139,10 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # WebSocket support (for scan progress, live recommendations)
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
     }
 
     location /health {
@@ -196,3 +220,23 @@ If frontend loads but API calls fail:
 - Verify Nginx `location /api/` block exists and reload Nginx.
 - Verify API gateway is healthy on `localhost:8000/health`.
 - Confirm DNS points `sf.thinkhivelabs.com` to the droplet IP.
+
+## 10) Code Quality / Linting
+
+Backend (Python) — uses **ruff**:
+
+```bash
+pip install ruff
+ruff check .                  # Check for errors
+ruff check --fix .            # Auto-fix safe issues
+ruff check --fix --unsafe-fixes .  # Auto-fix all
+```
+
+Frontend (React) — uses **ESLint** (via Vite):
+
+```bash
+cd frontend
+npx eslint src/               # Check for errors
+```
+
+Both are configured to catch unused imports, bare excepts, ambiguous variables, and React hooks issues.

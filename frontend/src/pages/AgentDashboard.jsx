@@ -9,15 +9,15 @@ import {
     Power, PowerOff, Zap, Clock, Target, BarChart3, AlertTriangle,
     ArrowUpRight, ArrowDownRight, Cpu, Wifi, WifiOff
 } from 'lucide-react';
-import { fetchAgentStatus, fetchAgentTrades, fetchPortfolio, fetchRecommendations } from '../services/api';
-import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, timeAgo, getConvictionLevel, getPnlColor } from '../utils/formatters';
+import { fetchAgentStatus, fetchPortfolio, fetchRecommendations } from '../services/api';
+import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, timeAgo, getPnlColor } from '../utils/formatters';
 
 const AgentDashboard = () => {
-    const theme = useTheme();
+    const _theme = useTheme();
     const [agentStatus, setAgentStatus] = useState({ status: 'online', active_monitors: 0, last_action: null, trades_today: 0, win_rate: 0 });
     const [portfolio, setPortfolio] = useState(null);
     const [recommendations, setRecommendations] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [_loading, setLoading] = useState(true);
 
     const load = useCallback(async () => {
         try {
@@ -48,7 +48,7 @@ const AgentDashboard = () => {
     const tradeHistory = portfolio?.trade_history || [];
     const unrealizedPnl = activeTrades.reduce((s, t) => s + (t.pnl || 0), 0);
     const realizedPnl = portfolio?.realized_pnl || 0;
-    const totalTrades = activeTrades.length + tradeHistory.length;
+    const _totalTrades = activeTrades.length + tradeHistory.length;
     const winTrades = tradeHistory.filter(t => (t.pnl || 0) > 0).length;
     const winRate = tradeHistory.length > 0 ? (winTrades / tradeHistory.length * 100) : 0;
 
@@ -250,7 +250,7 @@ const AgentDashboard = () => {
                                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>All signals processed</Typography>
                                     </Box>
                                 ) : pendingSignals.map((rec) => {
-                                    const bullish = isBullish(rec.direction);
+                                    const _bullish = isBullish(rec.direction);
                                     const dirColor = getDirectionColor(rec.direction);
                                     const conviction = rec.conviction || rec.confidence || 0;
 

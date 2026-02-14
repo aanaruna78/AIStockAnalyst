@@ -1,5 +1,4 @@
 from datetime import datetime, time
-from typing import List
 
 class TradingCalendar:
     # NSE 2026 holidays (partial list for demonstration)

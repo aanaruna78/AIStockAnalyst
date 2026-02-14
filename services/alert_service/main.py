@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 from price_watcher import price_watcher
 from notifications import notification_manager
 import logging

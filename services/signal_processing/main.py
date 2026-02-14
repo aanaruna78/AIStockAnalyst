@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from entity_extractor import entity_extractor
 from sentiment import sentiment_analyzer
 from relevance import relevance_scorer

@@ -9,7 +9,6 @@ import ssl
 # Add service paths for host-side imports compatibility
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "services/ingestion_service")))
 
-import certifi
 import yfinance as yf
 from services.ingestion_service.tradingview_crawler import TradingViewCrawler
 from services.ingestion_service.tickertape_crawler import TickerTapeCrawler
@@ -153,7 +152,7 @@ class PipelineRunner:
                 sentiment_score = -0.8
         else:
             # Fallback if no ideas found (common for smaller stocks)
-            rationale = f"**Signal Analysis**\nAI monitoring active. No sufficient community ideas found recently. Technical scan proceeding."
+            rationale = "**Signal Analysis**\nAI monitoring active. No sufficient community ideas found recently. Technical scan proceeding."
             sentiment_score = 0.1 # Neutral
 
         
@@ -177,9 +176,12 @@ class PipelineRunner:
             if sc_funds:
                 fundamentals = {}
                 # Map Screener keys to TickerTape structure
-                if "stock_pe" in sc_funds: fundamentals['pe_ratio'] = sc_funds['stock_pe']
-                if "stock_p/e" in sc_funds: fundamentals['pe_ratio'] = sc_funds['stock_p/e']
-                if "dividend_yield" in sc_funds: fundamentals['div_yield'] = sc_funds['dividend_yield']
+                if "stock_pe" in sc_funds:
+                    fundamentals['pe_ratio'] = sc_funds['stock_pe']
+                if "stock_p/e" in sc_funds:
+                    fundamentals['pe_ratio'] = sc_funds['stock_p/e']
+                if "dividend_yield" in sc_funds:
+                    fundamentals['div_yield'] = sc_funds['dividend_yield']
                 
                 # Calculate PB if possible
                 curr_price = tt_data.get("current_price") or price
@@ -187,7 +189,8 @@ class PipelineRunner:
                 if curr_price and book_val:
                     try:
                         fundamentals['pb_ratio'] = float(curr_price) / float(book_val)
-                    except: pass
+                    except Exception:
+                        pass
                 
                 # Assign back so payload has it
                 if not tt_data.get("metrics"):
@@ -195,7 +198,7 @@ class PipelineRunner:
 
         # Enrich rationale (TickerTape part)
         if checklist:
-            rationale += f"\n\n**TickerTape Fundamentals**\n"
+            rationale += "\n\n**TickerTape Fundamentals**\n"
             rationale += f"- Valuation: {checklist.get('valuation', 'N/A')}\n"
             rationale += f"- Profitability: {checklist.get('profitability', 'N/A')}\n"
             rationale += f"- Entry Point: {checklist.get('entry_point', 'N/A')}\n"

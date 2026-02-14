@@ -13,7 +13,7 @@ import {
 import { useRecommendations } from '../hooks/useRecommendations';
 import RationaleRenderer from '../components/RationaleRenderer';
 import TickerBar from '../components/TickerBar';
-import { formatINR, formatPercent, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, SCORE_COLORS, timeAgo } from '../utils/formatters';
+import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, SCORE_COLORS, timeAgo } from '../utils/formatters';
 
 // ─── Live Log Terminal ──────────────────────────────────────────
 const LiveLogTerminal = ({ logs }) => {
@@ -281,7 +281,7 @@ const Dashboard = () => {
     const [filterTab, setFilterTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [scanLogOpen, setScanLogOpen] = useState(false);
-    const recs = Array.isArray(recommendations) ? recommendations : [];
+    const recs = useMemo(() => Array.isArray(recommendations) ? recommendations : [], [recommendations]);
 
     const filteredRecs = useMemo(() => {
         let filtered = recs

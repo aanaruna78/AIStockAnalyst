@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 
 class ModelRouter:
     def __init__(self):

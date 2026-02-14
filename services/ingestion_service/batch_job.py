@@ -4,8 +4,7 @@ import pandas as pd
 import httpx
 import logging
 import math
-import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import os
 import re
 from tickertape_crawler import TickerTapeCrawler
@@ -44,7 +43,6 @@ async def fetch_market_data(client, symbol, days=2):
 
 async def fetch_news_signals(client, symbol, progress_callback=None):
     source_id = "SRC-03"
-    source_url = "https://www.tradingview.com/ideas"
     try:
         response = await client.post(f"{INGESTION_SERVICE_URL}/trigger/{source_id}", params={"symbol": symbol})
         if response.status_code == 200:
@@ -195,7 +193,7 @@ def calculate_freshness(timestamp_str=None):
         # Exponential decay: half-life = 48 hours for general signals
         half_life = 48
         return math.exp(-0.693 * age_hours / half_life)
-    except:
+    except Exception:
         return 1.0
 
 def is_symbol_in_text(symbol, text):
@@ -228,7 +226,7 @@ async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_
     
     # 2.5 Crawl TickerTape & Screener (New)
     if progress_callback:
-        await progress_callback({"status": "processing", "symbol": symbol, "log": f"Fetching fundamental & analyst data (TickerTape/Screener)..."})
+        await progress_callback({"status": "processing", "symbol": symbol, "log": "Fetching fundamental & analyst data (TickerTape/Screener)..."})
         
     tt_data = await tt_crawler.crawl_stock(symbol)
     screener_data = await sc_crawler.crawl_stock(symbol)

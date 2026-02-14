@@ -11,7 +11,7 @@ import {
 import RationaleRenderer from '../components/RationaleRenderer';
 import { fetchRecommendationById } from '../services/api';
 import { addToWatchlist } from '../services/api';
-import { formatINR, formatPercent, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, SCORE_COLORS, timeAgo } from '../utils/formatters';
+import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, SCORE_COLORS, timeAgo } from '../utils/formatters';
 
 const RecommendationDetail = () => {
     const navigate = useNavigate();

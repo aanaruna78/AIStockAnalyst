@@ -15,6 +15,7 @@ import Alerts from './pages/AlertsNew';
 import Portfolio from './pages/Portfolio';
 import AgentDashboard from './pages/AgentDashboard';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 import { fetchAlerts } from './services/api';
 import { isBullish } from './utils/formatters';
 
@@ -59,7 +60,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    pollAlerts();
+    pollAlerts(); // eslint-disable-line react-hooks/set-state-in-effect
     const iv = setInterval(pollAlerts, 30000);
     return () => clearInterval(iv);
   }, [pollAlerts]);
@@ -80,6 +81,7 @@ function App() {
               <Route path="/portfolio" element={<RequireAuth><Portfolio /></RequireAuth>} />
               <Route path="/agent" element={<RequireAuth><AgentDashboard /></RequireAuth>} />
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+              <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
             </Routes>
           </Box>
 

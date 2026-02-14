@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import yfinance as yf
@@ -27,7 +27,7 @@ async def price_monitor_loop():
                 await asyncio.sleep(60)
                 continue
 
-            symbols = [t.symbol + ".NS" for t in active_trades] # NSE symbols
+            [t.symbol + ".NS" for t in active_trades] # NSE symbols
             
             # 2. Fetch live prices via robust mechanism
             current_prices = {}
@@ -90,7 +90,7 @@ async def price_monitor_loop():
                         ticker = yf.Ticker(yf_sym)
                         info = ticker.fast_info
                         price = info.get('lastPrice') or info.get('last_price')
-                    except Exception as e:
+                    except Exception:
                         # print(f"[TradingService] yfinance Fallback Failed for {yf_sym}: {e}")
                         pass
 
@@ -156,7 +156,8 @@ async def close_trade(trade_id: str, price: float):
 @app.post("/trade/close-all")
 async def close_all_positions():
     """Square off all positions using best available price."""
-    import requests, math
+    import requests
+    import math
     active_trades = list(trade_manager.portfolio.active_trades)
     price_map = {}
 
@@ -177,7 +178,7 @@ async def close_all_positions():
                 data = r.json()
                 if data.get('chart') and data['chart'].get('result'):
                     price = data['chart']['result'][0]['meta'].get('regularMarketPrice')
-        except:
+        except Exception:
             pass
 
         # Method B: Google Finance
@@ -190,7 +191,7 @@ async def close_all_positions():
                     match = re.search(r'data-last-price="([\d\.]+)"', gr.text)
                     if match:
                         price = float(match.group(1))
-            except:
+            except Exception:
                 pass
 
         # Method C: yfinance
@@ -199,7 +200,7 @@ async def close_all_positions():
                 ticker = yf.Ticker(yf_sym)
                 info = ticker.fast_info
                 price = info.get('lastPrice') or info.get('last_price')
-            except:
+            except Exception:
                 pass
 
         if price and not math.isnan(price):

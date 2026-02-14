@@ -1,8 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 import httpx
 import websockets
-import asyncio
-import json
 from shared.config import settings
 
 router = APIRouter(tags=["Ingestion"])

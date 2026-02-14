@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import sys
@@ -9,9 +9,7 @@ from scoring_model import scoring_model
 from level_calculator import level_calculator
 from lifecycle import lifecycle_engine
 from shared.config import settings
-import numpy as np
 import logging
-import json
 
 app = FastAPI(title="SignalForge Recommendation Engine")
 logging.basicConfig(level=logging.INFO)
@@ -117,7 +115,7 @@ async def generate_recommendation(request: RecommendationRequest):
     # Global Outlook Text
     global_outlook = ""
     if request.global_analysis:
-        summary = request.global_analysis.get("global_summary", "")
+        request.global_analysis.get("global_summary", "")
         
         # Currency
         usd_inr = request.global_analysis.get("indices", {}).get("USD/INR")
@@ -152,7 +150,7 @@ async def generate_recommendation(request: RecommendationRequest):
     
     # Extract detailed scores from the nested 'breakdown' dict
     details = breakdown.get("breakdown", {})
-    ml_confidence = details.get("ml_model", {}).get("confidence", 0.5)
+    details.get("ml_model", {}).get("confidence", 0.5)
     
     # 5. Full Score Breakdown for UI
     # Display sub-scores as directional: positive = bullish contribution, negative = bearish
@@ -339,8 +337,10 @@ async def generate_recommendation(request: RecommendationRequest):
             
             pros = sc.get("pros", [])
             cons = sc.get("cons", [])
-            if pros: rationale_text += f"- Strengths: {'; '.join(pros[:2])}\n"
-            if cons: rationale_text += f"- Weaknesses: {'; '.join(cons[:2])}\n"
+            if pros:
+                rationale_text += f"- Strengths: {'; '.join(pros[:2])}\n"
+            if cons:
+                rationale_text += f"- Weaknesses: {'; '.join(cons[:2])}\n"
             
             sc_funds = sc.get("fundamentals", {})
             if sc_funds:
@@ -348,8 +348,10 @@ async def generate_recommendation(request: RecommendationRequest):
                 roe = sc_funds.get("roe")
                 if roce or roe:
                     vals = []
-                    if roce: vals.append(f"ROCE {roce}%")
-                    if roe: vals.append(f"ROE {roe}%")
+                    if roce:
+                        vals.append(f"ROCE {roce}%")
+                    if roe:
+                        vals.append(f"ROE {roe}%")
                     rationale_text += f"- Efficiency: {', '.join(vals)}\n"
 
         # 2. TickerTape Parts
@@ -360,7 +362,8 @@ async def generate_recommendation(request: RecommendationRequest):
             if forecast:
                 upside = forecast.get("upside")
                 analyst_rating = forecast.get("analyst_rating")
-                if upside: rationale_text += f"- Analyst Forecast: Upside {colorize(str(upside), C_GREEN)}\n"
+                if upside:
+                    rationale_text += f"- Analyst Forecast: Upside {colorize(str(upside), C_GREEN)}\n"
                 if analyst_rating: 
                     ar = str(analyst_rating)
                     c = C_GREEN if "Buy" in ar else (C_RED if "Sell" in ar else C_ORANGE)
@@ -435,7 +438,7 @@ async def get_active_recommendations(
         recommendations = [r for r in recommendations if r.get("direction") == "UP"]
     
     if sectors:
-        preferred_sectors = sectors.split(",")
+        sectors.split(",")
         # In a real app, we would map symbols to sectors. 
         # For now, we'll just allow all or implement a basic check if symbol is in a list.
         pass

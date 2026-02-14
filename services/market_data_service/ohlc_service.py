@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Optional
+from typing import Dict, Optional
 from dhan_client import dhan_client
 from indicators import indicators
 import logging

@@ -9,7 +9,7 @@ import {
     ArrowUpRight, ArrowDownRight, RefreshCw, Bookmark
 } from 'lucide-react';
 import { fetchRecommendations, fetchWatchlist, addToWatchlist, removeFromWatchlist } from '../services/api';
-import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, timeAgo } from '../utils/formatters';
+import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, timeAgo } from '../utils/formatters';
 
 const Watchlist = () => {
     const theme = useTheme();

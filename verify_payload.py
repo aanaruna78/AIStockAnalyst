@@ -51,7 +51,7 @@ class SpyClient:
 # Patch globally
 httpx.AsyncClient = SpyClient
 
-from pipeline_runner import PipelineRunner
+from pipeline_runner import PipelineRunner  # noqa: E402
 
 async def main():
     runner = PipelineRunner()

@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchRecommendations, fetchScanConfig, updateScanConfig, triggerCrawl } from '../services/api';
 import { config } from '../config';
+
+const defaultScanConfig = { interval_minutes: 10, enabled: true, last_scan_time: null };
+const normalizeScanConfig = (cfg) => ({ ...defaultScanConfig, ...cfg });
 
 export const useRecommendations = () => {
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const defaultScanConfig = { interval_minutes: 10, enabled: true, last_scan_time: null };
     const [scanConfig, setScanConfig] = useState(defaultScanConfig);
-    const normalizeScanConfig = (cfg) => ({ ...defaultScanConfig, ...cfg });
     const [crawling, setCrawling] = useState(false);
     const [crawlProgress, setCrawlProgress] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -43,9 +44,9 @@ export const useRecommendations = () => {
                             return [msg.data, ...filtered].slice(0, 50);
                         });
                     }
-                } catch {}
+                } catch { /* parse error ignored */ }
             };
-        } catch {}
+        } catch { /* WS connect error ignored */ }
 
         // Progress WebSocket
         let progressWs;
@@ -66,9 +67,9 @@ export const useRecommendations = () => {
                     if (data.status === 'starting') {
                         setLogs([{ msg: '→ Initiating market scan...', time: Date.now() }]);
                     }
-                } catch {}
+                } catch { /* parse error ignored */ }
             };
-        } catch {}
+        } catch { /* WS connect error ignored */ }
 
         return () => {
             recWs?.readyState === WebSocket.OPEN && recWs.close();
@@ -94,7 +95,7 @@ export const useRecommendations = () => {
         try {
             const cfg = await updateScanConfig(interval, interval > 0);
             setScanConfig(normalizeScanConfig(cfg));
-        } catch {}
+        } catch { /* interval update error ignored */ }
     }, []);
 
     return {

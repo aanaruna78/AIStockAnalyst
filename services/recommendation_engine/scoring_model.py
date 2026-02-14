@@ -2,7 +2,6 @@ from typing import List, Dict, Any
 import numpy as np
 import httpx
 import logging
-import math
 import re
 from shared.config import settings
 
@@ -87,7 +86,8 @@ class ScoringModel:
                         score += 0.2 # Bonus for > 20% upside
                     elif upside_val > settings.ANALYST_UPSIDE_MID:
                         score += 0.1 # Bonus for > 10% upside
-            except: pass
+            except Exception:
+                pass
             
         # 2. Analyst Ratings
         # "80% Buy" -> Parse
@@ -98,20 +98,28 @@ class ScoringModel:
                 if match:
                     percent = float(match.group(1))
                     if "Buy" in rating_str:
-                        if percent > settings.ANALYST_BUY_PERCENT_HIGH: score += 0.2
-                        elif percent > settings.ANALYST_BUY_PERCENT_MID: score += 0.1
-                        elif percent < settings.ANALYST_BUY_PERCENT_LOW: score -= 0.1
+                        if percent > settings.ANALYST_BUY_PERCENT_HIGH:
+                            score += 0.2
+                        elif percent > settings.ANALYST_BUY_PERCENT_MID:
+                            score += 0.1
+                        elif percent < settings.ANALYST_BUY_PERCENT_LOW:
+                            score -= 0.1
                     elif "Sell" in rating_str:
                         score -= (percent / 100) * 0.2
-            except: pass
+            except Exception:
+                pass
             
         # 3. Technical Rating from TickerTape (Direct confirmation)
         tech_rating = tickertape_data.get("technical_rating") # "Bullish", "Bearish", "Neutral"
         if tech_rating:
-            if "Very Bull" in tech_rating: score += 0.2
-            elif "Very Bear" in tech_rating: score -= 0.2
-            elif "Bull" in tech_rating: score += 0.1
-            elif "Bear" in tech_rating: score -= 0.1
+            if "Very Bull" in tech_rating:
+                score += 0.2
+            elif "Very Bear" in tech_rating:
+                score -= 0.2
+            elif "Bull" in tech_rating:
+                score += 0.1
+            elif "Bear" in tech_rating:
+                score -= 0.1
             
         return min(1.0, max(0.0, score))
 
@@ -207,7 +215,7 @@ class ScoringModel:
         adr_score = 0.0
         if global_analysis and "adr" in global_analysis:
             adr_info = global_analysis["adr"]
-            ticker = adr_info.get("ticker")
+            adr_info.get("ticker")
             data = adr_info.get("data", {})
             change_pct = data.get("change_pct", 0.0)
             
@@ -248,7 +256,8 @@ class ScoringModel:
         }
 
     def _calculate_fundamental_score(self, screener_data: Dict[str, Any]) -> float:
-        if not screener_data: return 0.5
+        if not screener_data:
+            return 0.5
         score = 0.5
         
         # Pros vs Cons
@@ -262,9 +271,12 @@ class ScoringModel:
         roce = funds.get("roce")
         if roce:
             try:
-                if float(roce) > 20: score += 0.05
-                elif float(roce) > 15: score += 0.03
-            except: pass
+                if float(roce) > 20:
+                    score += 0.05
+                elif float(roce) > 15:
+                    score += 0.03
+            except Exception:
+                pass
             
         return min(1.0, max(0.0, score))
 
@@ -276,8 +288,10 @@ class ScoringModel:
         atr_ratio = indicators.get("atr_ratio")
         
         # Default to neutral/chop if data missing
-        if adx is None: adx = settings.REGIME_ADX_TRENDING
-        if atr_ratio is None: atr_ratio = 1.0
+        if adx is None:
+            adx = settings.REGIME_ADX_TRENDING
+        if atr_ratio is None:
+            atr_ratio = 1.0
         
         if vix > settings.VIX_HIGH or atr_ratio > settings.REGIME_ATR_RATIO_VOLATILE:
             return "VOLATILE"

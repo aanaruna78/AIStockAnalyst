@@ -2,7 +2,7 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, Depends
 from shared.config import settings
-from auth_router import get_current_user, oauth2_scheme
+from auth_router import oauth2_scheme
 
 router = APIRouter(prefix="/alerts", tags=["alerts"])
 

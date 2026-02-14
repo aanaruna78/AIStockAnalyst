@@ -1,6 +1,4 @@
 import yfinance as yf
-import pandas as pd
-import math
 
 tickers = ["ITC.NS", "JIOFIN.NS", "TRENT.NS", "RELIANCE.NS"]
 print(f"Testing tickers: {tickers}")

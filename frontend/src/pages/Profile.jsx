@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Card, CardContent, Container, Avatar, Button,
     RadioGroup, FormControlLabel, Radio, Chip, Stack, Divider,
-    CircularProgress, Snackbar, Alert, alpha
+    CircularProgress, Snackbar, Alert
 } from '@mui/material';
 import { User, Mail, Shield, Clock, BarChart3, Save, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -76,7 +76,7 @@ const Profile = () => {
     if (!user) return null;
 
     const riskLabels = { low: 'Low (Preserve Capital)', medium: 'Medium (Balanced Growth)', high: 'High (Aggressive Returns)' };
-    const horizonLabels = { intraday: 'Intraday', swing: 'Swing', long_term: 'Long Term' };
+    const _horizonLabels = { intraday: 'Intraday', swing: 'Swing', long_term: 'Long Term' };
 
     return (
         <Container maxWidth="md" sx={{ py: 4, pt: 10 }}>

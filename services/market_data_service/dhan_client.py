@@ -1,4 +1,3 @@
-from dhanhq import dhanhq
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 import logging
@@ -111,11 +110,16 @@ class DhanClient:
             
             # Map interval to yfinance format
             yf_interval = "1d"
-            if interval == "1m": yf_interval = "1m"
-            elif interval == "5m": yf_interval = "5m"
-            elif interval == "15m": yf_interval = "15m"
-            elif interval == "30m": yf_interval = "30m"
-            elif interval == "60m" or interval == "1h": yf_interval = "1h"
+            if interval == "1m":
+                yf_interval = "1m"
+            elif interval == "5m":
+                yf_interval = "5m"
+            elif interval == "15m":
+                yf_interval = "15m"
+            elif interval == "30m":
+                yf_interval = "30m"
+            elif interval == "60m" or interval == "1h":
+                yf_interval = "1h"
             
             ticker = yf.Ticker(yf_symbol)
             df = ticker.history(period=period, interval=yf_interval)

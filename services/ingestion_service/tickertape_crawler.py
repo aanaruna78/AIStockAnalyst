@@ -164,7 +164,8 @@ class TickerTapeCrawler(BaseCrawler):
              async with httpx.AsyncClient(verify=False, headers=self.headers, follow_redirects=True) as client:
                  resp = await client.head(url)
                  return resp.status_code == 200
-        except: return False
+        except Exception:
+            return False
 
     # Helper for pipeline
     async def search_api_lookup(self, symbol):
