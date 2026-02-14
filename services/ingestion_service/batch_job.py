@@ -10,24 +10,25 @@ import os
 import re
 from tickertape_crawler import TickerTapeCrawler
 from screener_crawler import ScreenerCrawler
+from global_market_crawler import GlobalMarketCrawler
+from shared.config import settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("BatchCrawler")
 
-# Docker-aware URLs (service names resolve within the Docker network)
-# Docker-aware URLs (service names resolve within the Docker network)
-# Updated for local execution
-MARKET_DATA_URL = "http://localhost:8003"
-REC_ENGINE_URL = "http://localhost:18004"
-INGESTION_SERVICE_URL = "http://localhost:8002"
-SIGNAL_PROCESSOR_URL = "http://localhost:8004"
+# Service URLs from centralised config (overridden by env vars in Docker)
+MARKET_DATA_URL = settings.MARKET_DATA_SERVICE_URL
+REC_ENGINE_URL = settings.REC_ENGINE_URL
+INGESTION_SERVICE_URL = settings.INGESTION_SERVICE_URL
+SIGNAL_PROCESSOR_URL = settings.SIGNAL_PROCESSING_URL
 
 STOCKS_CSV = "data/nse_stocks.csv"
 
 # Persistent Crawlers
 tt_crawler = TickerTapeCrawler("tickertape", "https://www.tickertape.in")
 sc_crawler = ScreenerCrawler("screener", "https://www.screener.in")
+global_crawler = GlobalMarketCrawler()
 
 async def fetch_market_data(client, symbol, days=2):
     try:
@@ -207,7 +208,7 @@ def is_symbol_in_text(symbol, text):
     pattern = r'\b' + re.escape(symbol.upper()) + r'\b'
     return bool(re.search(pattern, text.upper()))
 
-async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_recs=None, sig_context=None, progress_callback=None):
+async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_recs=None, sig_context=None, global_analysis=None, progress_callback=None):
     logger.info(f"Processing {symbol}...")
     if progress_callback:
         await progress_callback({"status": "processing", "symbol": symbol, "log": f"Initializing analysis for {symbol} (Filter: Today + Last 24h)..."})
@@ -431,7 +432,8 @@ async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_
         "checklist": checklist,
         "financials": financials,
         "screener_analysis": screener_data,
-        "tickertape_analysis": tt_data
+        "tickertape_analysis": tt_data,
+        "global_analysis": global_analysis
     }
     
     # 4. Generate Recommendation
@@ -538,6 +540,21 @@ async def run_batch(limit=None, target_symbol=None, progress_callback=None):
         if progress_callback:
             await progress_callback({"status": "processing", "log": f"Community Hub: Found {len(global_signals)} signals across Reddit & ValuePickr."})
 
+        # Fetch global market context (VIX, indices) once for all symbols
+        global_analysis = None
+        try:
+            global_data = await global_crawler.fetch_sentiment()
+            if global_data and isinstance(global_data, dict):
+                global_analysis = {
+                    "global_summary": global_data.get("global_summary", ""),
+                    "global_score": global_data.get("global_score", 0.0),
+                    "vix": global_data.get("vix", 0.0),
+                    "indices": global_data.get("indices", {})
+                }
+                logger.info(f"Global Market Context: VIX={global_analysis['vix']}, Score={global_analysis['global_score']}")
+        except Exception as e:
+            logger.warning(f"Could not fetch global market data: {e}")
+
         processed = 0
         for symbol in symbols:
             processed += 1
@@ -551,7 +568,7 @@ async def run_batch(limit=None, target_symbol=None, progress_callback=None):
                     "log": f"Switching context to {symbol} ({processed}/{total})..."
                 })
             
-            await process_symbol(client, symbol, five_paisa_recs=five_paisa_recs, mc_recs=mc_recs, tl_recs=tl_recs, sig_context=sig_context, progress_callback=progress_callback)
+            await process_symbol(client, symbol, five_paisa_recs=five_paisa_recs, mc_recs=mc_recs, tl_recs=tl_recs, sig_context=sig_context, global_analysis=global_analysis, progress_callback=progress_callback)
             # await asyncio.sleep(0.1) # Rate limit protection
 
     if progress_callback:

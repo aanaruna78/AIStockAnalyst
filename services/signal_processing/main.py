@@ -48,6 +48,10 @@ async def process_signal(request: SignalRequest):
         status = "ignored" # No linked symbol implies general market noise or irrelevant
     
     return {
+        "symbols": symbols,
+        "sentiment": sentiment_data.get("polarity", 0.0),
+        "subjectivity": sentiment_data.get("subjectivity", 0.0),
+        "relevance": relevance,
         "status": status,
         "meta": sentiment_data
     }

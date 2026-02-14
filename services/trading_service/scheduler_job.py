@@ -4,9 +4,14 @@ import httpx
 import asyncio
 import os
 import sys
+from datetime import datetime
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+from shared.config import settings
 
 # API Gateway URL
-API_GATEWAY_URL = "http://localhost:8000/api/v1"
+API_GATEWAY_URL = f"{settings.API_GATEWAY_URL}/api/v1"
+TRADING_SERVICE_URL = settings.TRADING_SERVICE_URL
 
 scheduler = AsyncIOScheduler()
 
@@ -50,7 +55,7 @@ async def auto_square_off():
             # Or better, we create a 'close_all' method in trade_manager and call it if we import it.
             # Importing trade_manager instance from main might be circular.
             # Better to add POST /trade/close-all to main.py
-            resp = await client.post("http://localhost:8005/trade/close-all")
+            resp = await client.post(f"{TRADING_SERVICE_URL}/trade/close-all")
             print(f"[Scheduler] Square Off Triggered: {resp.status_code}")
         except Exception as e:
             print(f"[Scheduler] Failed to trigger square off: {e}")
@@ -60,20 +65,20 @@ async def execute_trades_job():
     print("[Scheduler] ⏰ 9:20 AM - Executing Trades...")
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.post("http://localhost:8005/trade/execute-signals")
+            resp = await client.post(f"{TRADING_SERVICE_URL}/trade/execute-signals")
             print(f"[Scheduler] Auto-Entry Triggered: {resp.status_code}")
         except Exception as e:
             print(f"[Scheduler] Failed to trigger auto-entry: {e}")
 
 def start_scheduler():
-    # 9:15 AM Scan
-    scheduler.add_job(trigger_daily_scan, CronTrigger(hour=9, minute=15, day_of_week='mon-fri'))
+    # 9:15 AM Scan (Daily)
+    scheduler.add_job(trigger_daily_scan, CronTrigger(hour=9, minute=15, day_of_week='mon-sun'))
     
-    # 9:20 AM Execute Trades
-    scheduler.add_job(execute_trades_job, CronTrigger(hour=9, minute=20, day_of_week='mon-fri'))
+    # 9:20 AM - 9:50 AM Execute Trades (Every 5 mins)
+    scheduler.add_job(execute_trades_job, CronTrigger(hour=9, minute='20-50/5', day_of_week='mon-sun'))
     
-    # 3:15 PM Square Off
-    scheduler.add_job(auto_square_off, CronTrigger(hour=15, minute=15, day_of_week='mon-fri'))
+    # 3:15 PM - 3:28 PM Square Off (Every 2 mins)
+    scheduler.add_job(auto_square_off, CronTrigger(hour=15, minute='15-28/2', day_of_week='mon-sun'))
     
     scheduler.start()
-    print("[Scheduler] 📅 Scheduler Started (9:15 Scan, 9:20 Entry, 3:15 Exit)")
+    print("[Scheduler] 📅 Scheduler Started (9:15 Scan | 9:20-9:50 Entry | 3:15-3:28 Exit) - WEEKENDS ENABLED")

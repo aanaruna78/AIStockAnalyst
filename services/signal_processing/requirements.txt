@@ -4,3 +4,4 @@ vaderSentiment
 textblob
 spacy
 pandas
+pydantic-settings

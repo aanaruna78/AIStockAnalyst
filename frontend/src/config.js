@@ -1,5 +1,20 @@
-const API_BASE_URL = 'http://localhost:8010/api/v1';
-const WS_BASE_URL = 'ws://localhost:8010/api/v1';
+const getDefaultApiBaseUrl = () => {
+    if (typeof window === 'undefined') {
+        return 'http://localhost:8000/api/v1';
+    }
+    return `${window.location.origin}/api/v1`;
+};
+
+const getDefaultWsBaseUrl = () => {
+    if (typeof window === 'undefined') {
+        return 'ws://localhost:8000/api/v1';
+    }
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsProtocol}//${window.location.host}/api/v1`;
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || getDefaultApiBaseUrl();
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || getDefaultWsBaseUrl();
 
 export const config = {
     API_BASE_URL,

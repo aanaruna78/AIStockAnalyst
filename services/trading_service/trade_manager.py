@@ -9,7 +9,12 @@ import uuid
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from shared.models import Trade, TradeType, TradeStatus, Portfolio
 
-DATA_FILE = "../../data/paper_trades.json"
+# Robust path for data file inside the project
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_FILE = os.environ.get(
+    "PAPER_TRADES_FILE",
+    os.path.join(BASE_DIR, "../../data/paper_trades.json")
+)
 
 class TradeManager:
     def __init__(self):
@@ -40,10 +45,12 @@ class TradeManager:
             print(f"[TradeManager] Error saving state: {e}")
 
     def place_order(self, symbol: str, entry_price: float, target: float, stop_loss: float, 
-                    conviction: float, rationale: str = "", quantity: int = 0) -> Optional[Trade]:
+                    conviction: float, rationale: str = "", quantity: int = 0,
+                    trade_type: str = "BUY") -> Optional[Trade]:
         """
-        Execute a paper buy order.
+        Execute a paper trade order (BUY or SELL/SHORT).
         Allocates ~20k per trade if quantity is not specified.
+        For SHORT: margin is blocked same as buy cost (simplified paper trading).
         """
         if quantity <= 0:
             quantity = int(20000 / entry_price)
@@ -55,14 +62,16 @@ class TradeManager:
             print(f"[TradeManager] Insufficient funds for {symbol}. Needed: {cost}, Available: {self.portfolio.cash_balance}")
             return None
 
-        # Deduct cash
+        # Deduct cash (margin block for both BUY and SHORT)
         self.portfolio.cash_balance -= cost
+
+        t_type = TradeType.SELL if trade_type.upper() == "SELL" else TradeType.BUY
 
         # Create trade
         trade = Trade(
             id=str(uuid.uuid4()),
             symbol=symbol,
-            type=TradeType.BUY,
+            type=t_type,
             status=TradeStatus.OPEN,
             entry_price=entry_price,
             quantity=quantity,
@@ -75,20 +84,29 @@ class TradeManager:
 
         self.portfolio.active_trades.append(trade)
         self.save_state()
-        print(f"[TradeManager] BUY EXECUTED: {symbol} @ {entry_price} | Qty: {quantity}")
+        print(f"[TradeManager] {t_type.value} EXECUTED: {symbol} @ {entry_price} | Qty: {quantity} | Target: {target} | SL: {stop_loss}")
         return trade
 
     def close_trade(self, trade_id: str, exit_price: float, reason: str = "Manual"):
-        """Close a specific trade."""
+        """Close a specific trade (handles both BUY/LONG and SELL/SHORT)."""
         trade = next((t for t in self.portfolio.active_trades if t.id == trade_id), None)
         if not trade:
             return
 
-        # Calculate P&L
-        revenue = trade.quantity * exit_price
         cost = trade.quantity * trade.entry_price
-        pnl = revenue - cost
-        pnl_percent = (pnl / cost) * 100
+
+        # Calculate P&L based on trade type
+        if trade.type == TradeType.SELL:
+            # SHORT: profit when price goes down → P&L = (entry - exit) * qty
+            pnl = (trade.entry_price - exit_price) * trade.quantity
+            # Return the original margin + profit (or - loss)
+            cash_return = cost + pnl
+        else:
+            # LONG/BUY: profit when price goes up → P&L = (exit - entry) * qty
+            pnl = (exit_price - trade.entry_price) * trade.quantity
+            cash_return = trade.quantity * exit_price
+
+        pnl_percent = (pnl / cost) * 100 if cost > 0 else 0
 
         # Update Trade
         trade.status = TradeStatus.CLOSED
@@ -99,47 +117,69 @@ class TradeManager:
         trade.rationale_summary = f"{trade.rationale_summary} | Exit: {reason}" if trade.rationale_summary else f"Exit: {reason}"
 
         # Update Portfolio
-        self.portfolio.cash_balance += revenue
+        self.portfolio.cash_balance += cash_return
         self.portfolio.realized_pnl += pnl
         self.portfolio.active_trades.remove(trade)
         self.portfolio.trade_history.append(trade)
         
         self.save_state()
-        print(f"[TradeManager] CLOSED {trade.symbol} @ {exit_price}. P&L: {pnl:.2f} ({pnl_percent:.1f}%) | Reason: {reason}")
+        side_label = "SHORT" if trade.type == TradeType.SELL else "LONG"
+        print(f"[TradeManager] CLOSED {side_label} {trade.symbol} @ {exit_price}. P&L: {pnl:.2f} ({pnl_percent:.1f}%) | Reason: {reason}")
 
     def update_prices(self, price_map: Dict[str, float]):
         """
         Update live prices and check for exits.
+        Handles both LONG (BUY) and SHORT (SELL) positions.
         price_map: { "RELIANCE": 2405.00, ... }
         """
+        import math
         for trade in list(self.portfolio.active_trades):
             current_price = price_map.get(trade.symbol)
-            if not current_price:
+            if current_price is None or (isinstance(current_price, float) and math.isnan(current_price)):
                 continue
 
-            # Check Target
-            if current_price >= trade.target:
+            hit_target = False
+            hit_sl = False
+
+            if trade.type == TradeType.SELL:
+                # SHORT: target is BELOW entry, SL is ABOVE entry
+                hit_target = current_price <= trade.target
+                hit_sl = current_price >= trade.stop_loss
+            else:
+                # LONG/BUY: target is ABOVE entry, SL is BELOW entry
+                hit_target = current_price >= trade.target
+                hit_sl = current_price <= trade.stop_loss
+
+            if hit_target:
                 self.close_trade(trade.id, current_price, reason="Target Hit")
-            
-            # Check Stop Loss
-            elif current_price <= trade.stop_loss:
+            elif hit_sl:
                 self.close_trade(trade.id, current_price, reason="Stop Loss Hit")
-            
             else:
                 # Update unrealized P&L
                 trade.current_price = current_price
-                market_value = trade.quantity * current_price
                 cost_value = trade.quantity * trade.entry_price
-                trade.pnl = round(market_value - cost_value, 2)
-                trade.pnl_percent = round((trade.pnl / cost_value) * 100, 2)
+                if trade.type == TradeType.SELL:
+                    trade.pnl = round((trade.entry_price - current_price) * trade.quantity, 2)
+                else:
+                    trade.pnl = round((current_price - trade.entry_price) * trade.quantity, 2)
+                trade.pnl_percent = round((trade.pnl / cost_value) * 100, 2) if cost_value > 0 else 0
         
         # Save state to persist price updates
         self.save_state()
 
     def close_all_positions(self, price_map: Dict[str, float]):
-        """Intraday auto-square off at 3:15 PM"""
+        """Intraday auto-square off at 3:15 PM.
+        Uses price_map first, then trade.current_price, then entry_price as last resort.
+        """
         for trade in list(self.portfolio.active_trades):
-            exit_price = price_map.get(trade.symbol, trade.entry_price) # Fallback to entry if no live data
+            exit_price = price_map.get(trade.symbol)
+            if not exit_price or exit_price <= 0:
+                # Use last monitored price (updated every 5s by price_monitor_loop)
+                exit_price = trade.current_price if trade.current_price and trade.current_price > 0 else None
+            if not exit_price or exit_price <= 0:
+                # Absolute last resort
+                exit_price = trade.entry_price
+                print(f"[TradeManager] ⚠️ No live price for {trade.symbol} — using entry price for square-off")
             self.close_trade(trade.id, exit_price, reason="Intraday Square-off")
 
     def get_portfolio_summary(self):

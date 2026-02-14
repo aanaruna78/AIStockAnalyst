@@ -20,13 +20,13 @@ class GlobalConfig(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
     # Recommendation Thresholds (Control Section)
-    MIN_CONFIDENCE_SCORE: float = 0.05
+    MIN_CONFIDENCE_SCORE: float = 0.15  # 15% directional conviction (bidirectional: distance from neutral)
     MAX_TRADES_PER_DAY: int = 5
     DEFAULT_VALIDITY_MINUTES: int = 240  # 4 hours
     STRICT_STOP_LOSS: bool = True
 
     # Service Discovery & Ports
-    API_GATEWAY_PORT: int = 8010
+    API_GATEWAY_PORT: int = 8000
     REC_ENGINE_PORT: int = 18004
     INGESTION_SERVICE_PORT: int = 8002
     PREDICTION_SERVICE_PORT: int = 8001
@@ -36,10 +36,19 @@ class GlobalConfig(BaseSettings):
     FRONTEND_PORT: int = 3000
 
     # Service Discovery URLs (Internal)
-    API_GATEWAY_URL: str = "http://localhost:8010"
+    # When running in Docker, these are overridden via environment variables
+    # to use Docker service names (e.g. http://ingestion-service:8000)
+    API_GATEWAY_URL: str = "http://localhost:8000"
     INGESTION_SERVICE_URL: str = "http://localhost:8002"
+    INGESTION_WS_URL: str = "ws://localhost:8002"
     PREDICTION_SERVICE_URL: str = "http://localhost:8001"
     REC_ENGINE_URL: str = "http://localhost:18004"
+    REC_ENGINE_WS_URL: str = "ws://localhost:18004"
+    MARKET_DATA_SERVICE_URL: str = "http://localhost:8003"
+    SIGNAL_PROCESSING_URL: str = "http://localhost:8004"
+    TRADING_SERVICE_URL: str = "http://localhost:8005"
+    AI_MODEL_SERVICE_URL: str = "http://localhost:18005"
+    ALERT_SERVICE_URL: str = "http://localhost:18006"
     
     # Ingestion Settings
     DEFAULT_SCAN_INTERVAL: int = 10  # minutes

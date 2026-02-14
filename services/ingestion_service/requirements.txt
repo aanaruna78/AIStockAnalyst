@@ -12,3 +12,6 @@ simhash
 python-dateutil
 pandas
 APScheduler
+pydantic-settings
+yfinance
+certifi

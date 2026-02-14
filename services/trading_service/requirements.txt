@@ -2,6 +2,8 @@ fastapi
 uvicorn
 httpx
 pydantic
+pydantic-settings
 apscheduler
 yfinance
 pandas
+requests

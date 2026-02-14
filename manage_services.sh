@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # Configuration
-PYTHON_CMD="python3" # Or /opt/homebrew/bin/python3.10 if strictly required
+PYTHON_CMD="/Users/arunachalam/smartai/AIStockAnalyst/venv/bin/python3"
 LOG_DIR="logs"
+export PYTHONPATH=$PYTHONPATH:.
+
 
 # Ensure log directory exists
 mkdir -p $LOG_DIR
@@ -51,9 +53,9 @@ function manage_docker {
 function service_api_gateway {
     local ACTION=$1
     if [ "$ACTION" == "stop" ]; then
-        kill_on_port 8010 "API Gateway"
+        kill_on_port 8000 "API Gateway"
     elif [ "$ACTION" == "start" ]; then
-        start_python_service "services/api_gateway/main.py" 8010 "api_gateway.log" "API Gateway"
+        start_python_service "services/api_gateway/main.py" 8000 "api_gateway.log" "API Gateway"
     fi
 }
 

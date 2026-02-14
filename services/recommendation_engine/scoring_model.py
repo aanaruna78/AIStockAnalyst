@@ -19,23 +19,6 @@ class ScoringModel:
             "analyst_ratings": settings.BASE_WEIGHT_ANALYST
         }
 
-    def _detect_regime(self, indicators: Dict[str, Any]) -> str:
-        """
-        Classify market state into TRENDING, CHOP, or VOLATILE.
-        """
-        adx = indicators.get("adx")
-        atr_ratio = indicators.get("atr_ratio")
-        
-        # Default to neutral/chop if data missing
-        if adx is None: adx = settings.REGIME_ADX_TRENDING
-        if atr_ratio is None: atr_ratio = 1.0
-        
-        if atr_ratio > settings.REGIME_ATR_RATIO_VOLATILE:
-            return "VOLATILE"
-        if adx > settings.REGIME_ADX_TRENDING:
-            return "TRENDING"
-        return "CHOP"
-
     def _get_dynamic_weights(self, regime: str, signals: List[Dict[str, Any]], ml_confidence: float) -> Dict[str, float]:
         """
         Adjust weights based on regime and signal metadata (Dynamic Gating).
@@ -100,10 +83,10 @@ class ScoringModel:
                     upside_val = float(match.group(1))
                     if "Low" in upside_str or upside_val < 0:
                         score -= 0.1
+                    elif upside_val > settings.ANALYST_UPSIDE_HIGH:
+                        score += 0.2 # Bonus for > 20% upside
                     elif upside_val > settings.ANALYST_UPSIDE_MID:
                         score += 0.1 # Bonus for > 10% upside
-                    elif upside_val > settings.ANALYST_UPSIDE_HIGH:
-                        score += 0.2
             except: pass
             
         # 2. Analyst Ratings
@@ -125,9 +108,10 @@ class ScoringModel:
         # 3. Technical Rating from TickerTape (Direct confirmation)
         tech_rating = tickertape_data.get("technical_rating") # "Bullish", "Bearish", "Neutral"
         if tech_rating:
-            if "Bull" in tech_rating: score += 0.1
+            if "Very Bull" in tech_rating: score += 0.2
+            elif "Very Bear" in tech_rating: score -= 0.2
+            elif "Bull" in tech_rating: score += 0.1
             elif "Bear" in tech_rating: score -= 0.1
-            elif "Very Bull" in tech_rating: score += 0.2
             
         return min(1.0, max(0.0, score))
 
@@ -200,26 +184,26 @@ class ScoringModel:
         if total_weight > 0:
             final_score = final_score / total_weight
 
-        # 6. Risk Penalty
+        # 6. Risk Penalty — reduces conviction magnitude, does not change direction
         risk_penalty = self._calculate_risk_penalty(indicators, vix)
-        final_score = final_score * (1 - risk_penalty)
+        # Shrink distance from 0.5 (neutral) by penalty factor
+        final_score = 0.5 + (final_score - 0.5) * (1 - risk_penalty)
 
-        # 7. Global Market Sentiment Modifier
+        # 7. Global Market Sentiment Modifier — shifts score toward bearish/bullish
         global_score = 0.0
-        global_penalty = 0.0
+        global_shift = 0.0
         if global_analysis:
             global_score = global_analysis.get("global_score", 0.0)
             if global_score < -0.3:
-                # Global Turn Down: Apply severe penalty
-                final_score *= 0.8 # -20%
-                global_penalty = 0.2
+                # Global bearish: shift score toward bearish (lower)
+                severity = min(1.0, abs(global_score))
+                global_shift = -severity * 0.04  # max -0.04 shift (balanced)
             elif global_score > 0.3:
-                # Global Rally: Slight boost
-                final_score *= 1.1 # +10%
-                
-            final_score = min(1.0, final_score)
+                # Global bullish: shift score toward bullish (higher)
+                global_shift = min(1.0, global_score) * 0.04  # max +0.04 shift (symmetric)
+            final_score = max(0.0, min(1.0, final_score + global_shift))
 
-        # 8. ADR Signal (Pre-Market/Overlay)
+        # 8. ADR Signal (Pre-Market/Overlay) — directional shift
         adr_score = 0.0
         if global_analysis and "adr" in global_analysis:
             adr_info = global_analysis["adr"]
@@ -227,18 +211,24 @@ class ScoringModel:
             data = adr_info.get("data", {})
             change_pct = data.get("change_pct", 0.0)
             
-            # Logic: Significant move in ADR indicates trend
             if change_pct > 1.5:
-                 final_score *= 1.05 # +5% Boost
-                 adr_score = 0.05
+                final_score = min(1.0, final_score + 0.03)
+                adr_score = 0.03
             elif change_pct < -1.5:
-                 final_score *= 0.95 # -5% Penalty
-                 adr_score = -0.05
-                 
-            final_score = min(1.0, final_score)
+                final_score = max(0.0, final_score - 0.03)
+                adr_score = -0.03
+
+        # --- Bidirectional conviction ---
+        # raw_score: 0.0 = strongly bearish, 0.5 = neutral, 1.0 = strongly bullish
+        # direction: derived from which side of 0.5
+        # conviction: how far from neutral, scaled to 0-100%
+        direction = "UP" if final_score >= 0.5 else "DOWN"
+        conviction = abs(final_score - 0.5) * 200  # 0-100 scale
 
         return {
-            "final_score": round(final_score * 100, 2),
+            "final_score": round(conviction, 2),
+            "direction": direction,
+            "raw_score": round(final_score, 4),
             "breakdown": {
                 "regime": regime,
                 "sentiment_score": round(sentiment_score * 100, 2),
@@ -253,6 +243,7 @@ class ScoringModel:
             },
             "weights": {k: round(v, 2) for k, v in dyn_weights.items()},
             "risk_penalty": round(risk_penalty, 4),
+            "global_shift": round(global_shift, 4),
             "adr_score": round(adr_score, 4)
         }
 
@@ -295,14 +286,62 @@ class ScoringModel:
         return "CHOP"
 
     def _calculate_continuous_technical_score(self, indicators: Dict[str, Any]) -> float:
-        score = 0.5
+        """Multi-indicator technical score using RSI, MACD, Bollinger, MA trend."""
+        scores = []
+        
+        # 1. RSI (continuous mapping)
         rsi = indicators.get("rsi")
         if rsi is not None:
-            # Simple linear mapping for robustness
-            if rsi < settings.RSI_OVERSOLD: score = 0.8 # Oversold = Buy
-            elif rsi > settings.RSI_OVERBOUGHT: score = 0.2 # Overbought = Sell
-            else: score = 0.5
-        return score
+            rsi = float(rsi)
+            if rsi < 20:
+                scores.append(0.9)
+            elif rsi < settings.RSI_OVERSOLD:
+                scores.append(0.6 + 0.3 * (settings.RSI_OVERSOLD - rsi) / (settings.RSI_OVERSOLD - 20))
+            elif rsi > 80:
+                scores.append(0.1)
+            elif rsi > settings.RSI_OVERBOUGHT:
+                scores.append(0.4 - 0.3 * (rsi - settings.RSI_OVERBOUGHT) / (80 - settings.RSI_OVERBOUGHT))
+            else:
+                # Momentum-aware RSI scoring for intraday:
+                # RSI 30-50: bullish (recovering from oversold)
+                # RSI 50-60: neutral momentum zone (healthy trend, not extended)
+                # RSI 60-70: slightly bearish (getting extended, approaching overbought)
+                if rsi <= 50:
+                    scores.append(0.5 + (50 - rsi) * 0.005)  # 30→0.6, 50→0.5
+                elif rsi <= 60:
+                    scores.append(0.5)  # Neutral momentum zone
+                else:
+                    scores.append(0.5 - (rsi - 60) * 0.01)  # 60→0.5, 65→0.45, 70→0.4
+        
+        # 2. MACD histogram direction
+        macd_hist = indicators.get("macd_histogram")
+        if macd_hist is not None:
+            h = float(macd_hist)
+            close = float(indicators.get("close", 1))
+            if close > 0:
+                norm = h / close * 100  # Normalize to percentage
+                scores.append(min(0.8, max(0.2, 0.5 + norm * 0.1)))
+        
+        # 3. Bollinger Band position
+        bb_upper = indicators.get("bb_upper")
+        bb_lower = indicators.get("bb_lower")
+        close = indicators.get("close")
+        if bb_upper and bb_lower and close:
+            bb_range = float(bb_upper) - float(bb_lower)
+            if bb_range > 0:
+                position = (float(close) - float(bb_lower)) / bb_range
+                # Near lower band = bullish, near upper band = bearish
+                scores.append(min(0.8, max(0.2, 1.0 - position)))
+        
+        # 4. Price vs SMA-20 trend
+        sma_20 = indicators.get("sma_20")
+        if sma_20 and close:
+            ratio = float(close) / float(sma_20)
+            scores.append(min(0.8, max(0.2, 0.5 + (ratio - 1.0) * 5)))
+        
+        if not scores:
+            return 0.5
+        return sum(scores) / len(scores)
 
     def _calculate_risk_penalty(self, indicators: Dict[str, Any], vix: float = 0.0) -> float:
         penalty = 0.0

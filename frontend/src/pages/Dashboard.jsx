@@ -390,7 +390,7 @@ const Dashboard = () => {
                             ))
                         ) : recommendations
                             .sort((a, b) => (b.conviction || b.confidence || 0) - (a.conviction || a.confidence || 0))
-                            .filter(rec => (rec.conviction || rec.confidence || 0) > 60 && rec.rationale !== "AI Analysis pending...")
+                            .filter(rec => (rec.conviction || rec.confidence || 0) > 0 && rec.rationale !== "AI Analysis pending...")
                             .map((rec) => (
                                 <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={rec.id}>
                                     <Card sx={{
@@ -463,15 +463,15 @@ const Dashboard = () => {
                                             <Grid container spacing={1} sx={{ mb: 2 }}>
                                                 <Grid size={6}>
                                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5, fontWeight: 600, fontSize: '0.65rem' }}>
-                                                        <TrendingUp size={12} /> TARGET
+                                                        {rec.direction === 'UP' || rec.direction === 'Strong Up' ? <TrendingUp size={12} /> : <TrendingDown size={12} />} TARGET
                                                     </Typography>
-                                                    <Typography variant="body2" color="success.main" fontWeight={800}>₹{rec.target1 || rec.target}</Typography>
+                                                    <Typography variant="body2" color={rec.direction === 'UP' || rec.direction === 'Strong Up' ? 'success.main' : 'error.main'} fontWeight={800}>₹{rec.target1 || rec.target}</Typography>
                                                 </Grid>
                                                 <Grid size={6} sx={{ textAlign: 'right' }}>
                                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end', mb: 0.5, fontWeight: 600, fontSize: '0.65rem' }}>
                                                         <ShieldCheck size={12} /> STOP LOSS
                                                     </Typography>
-                                                    <Typography variant="body2" color="error.main" fontWeight={800}>₹{rec.sl}</Typography>
+                                                    <Typography variant="body2" color={rec.direction === 'UP' || rec.direction === 'Strong Up' ? 'error.main' : 'success.main'} fontWeight={800}>₹{rec.sl}</Typography>
                                                 </Grid>
                                             </Grid>
 
@@ -504,12 +504,12 @@ const Dashboard = () => {
                                                             const color = colorMap[label] || 'rgba(255,255,255,0.4)';
 
                                                             return (
-                                                                <Tooltip key={label} title={`${label}: ${val}% contribution`}>
+                                                                <Tooltip key={label} title={`${label}: ${val > 0 ? '+' : ''}${Math.round(val)}% ${val > 0 ? 'bullish' : val < 0 ? 'bearish' : 'neutral'}`}>
                                                                     <Chip
                                                                         label={
                                                                             <span>
                                                                                 <b style={{ color: color }}>{label[0]}</b>
-                                                                                <span style={{ opacity: 0.8, marginLeft: '1px' }}>:{Math.round(val)}%</span>
+                                                                                <span style={{ opacity: 0.8, marginLeft: '1px', color: val > 0 ? '#27c93f' : val < 0 ? '#ff5f56' : 'inherit' }}>:{val > 0 ? '+' : ''}{Math.round(val)}%</span>
                                                                             </span>
                                                                         }
                                                                         size="small"
@@ -610,7 +610,7 @@ const Dashboard = () => {
                                             <Grid key={label} size={4}>
                                                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
                                                     <Typography variant="caption" color="text.secondary" fontWeight={700} display="block" sx={{ fontSize: '0.55rem', mb: 0.5 }}>{label.toUpperCase()}</Typography>
-                                                    <Typography variant="body2" fontWeight={900} color="primary.main">+{Math.round(val)}%</Typography>
+                                                    <Typography variant="body2" fontWeight={900} sx={{ color: val > 0 ? '#27c93f' : val < 0 ? '#ff5f56' : 'primary.main' }}>{val > 0 ? '+' : ''}{Math.round(val)}%</Typography>
                                                 </Box>
                                             </Grid>
                                         ))}
@@ -627,10 +627,10 @@ const Dashboard = () => {
                                 {/* Extended Target */}
                                 {selectedRationale.target2 && (
                                     <Grid size={6}>
-                                        <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(39, 201, 63, 0.05)', border: '1px solid rgba(39, 201, 63, 0.1)' }}>
+                                        <Box sx={{ p: 2, borderRadius: 2, bgcolor: selectedRationale.direction === 'UP' || selectedRationale.direction === 'Strong Up' ? 'rgba(39, 201, 63, 0.05)' : 'rgba(255, 95, 86, 0.05)', border: selectedRationale.direction === 'UP' || selectedRationale.direction === 'Strong Up' ? '1px solid rgba(39, 201, 63, 0.1)' : '1px solid rgba(255, 95, 86, 0.1)' }}>
                                             <Typography variant="caption" color="text.secondary" fontWeight={700}>EXTENDED TARGET (T2)</Typography>
-                                            <Typography variant="h6" color="success.main" fontWeight={800}>₹{selectedRationale.target2}</Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>Next resistance level</Typography>
+                                            <Typography variant="h6" sx={{ color: selectedRationale.direction === 'UP' || selectedRationale.direction === 'Strong Up' ? '#27c93f' : '#ff5f56' }} fontWeight={800}>₹{selectedRationale.target2}</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>{selectedRationale.direction === 'UP' || selectedRationale.direction === 'Strong Up' ? 'Next resistance level' : 'Next support level'}</Typography>
                                         </Box>
                                     </Grid>
                                 )}
@@ -640,7 +640,7 @@ const Dashboard = () => {
                                     <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(255, 189, 46, 0.05)', border: '1px solid rgba(255, 189, 46, 0.2)' }}>
                                         <Typography variant="caption" color="text.secondary" fontWeight={700}>TRAILING STRATEGY</Typography>
                                         <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>
-                                            Once Target 1 (₹{selectedRationale.target1 || selectedRationale.target}) is hit, move Stop Loss to Cost (₹{selectedRationale.entry || selectedRationale.price}).
+                                            Once Target 1 (₹{selectedRationale.target1 || selectedRationale.target}) is hit, move Stop Loss to {selectedRationale.direction === 'UP' || selectedRationale.direction === 'Strong Up' ? 'Cost' : 'Entry'} (₹{selectedRationale.entry || selectedRationale.price}).
                                         </Typography>
                                     </Box>
                                 </Grid>

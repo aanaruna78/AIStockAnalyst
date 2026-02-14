@@ -59,6 +59,28 @@ Use the provided management script for easy service control:
 ./manage_services.sh restart ingestion
 ```
 
+Or use Docker-based lifecycle scripts:
+
+```bash
+# Start the full stack
+./scripts/startup.sh
+
+# Start with rebuild and stream logs
+./scripts/startup.sh --build --logs
+
+# Graceful shutdown
+./scripts/shutdown.sh
+
+# Shutdown and remove named volumes
+./scripts/shutdown.sh --volumes
+
+# Deploy (rebuild and recreate containers)
+./scripts/deploy.sh
+
+# Deploy with latest pulls, prune dangling images, and stream logs
+./scripts/deploy.sh --pull --prune --logs
+```
+
 ## 📈 Deployment Strategy
 
 SignalForge supports two primary deployment paths:
@@ -71,3 +93,4 @@ See [technical_specification.md#deployment-strategy](file:///Users/arunachalam/.
 - [Technical Specification](file:///Users/arunachalam/.gemini/antigravity/brain/6b10e4f9-1dfb-4c82-af40-9f04d8a9008f/technical_specification.md)
 - [Project Walkthrough](file:///Users/arunachalam/.gemini/antigravity/brain/6b10e4f9-1dfb-4c82-af40-9f04d8a9008f/walkthrough.md)
 - [PDF - Technical Spec](file:///Users/arunachalam/.gemini/antigravity/brain/6b10e4f9-1dfb-4c82-af40-9f04d8a9008f/technical_specification.pdf)
+- [DigitalOcean Deployment Guide](docs/deployment_digitalocean.md)

@@ -8,6 +8,40 @@ services:
       - ./shared:/app/shared
     environment:
       - ENV=development
+      # Docker-internal service URLs (override localhost defaults)
+      - INGESTION_SERVICE_URL=http://ingestion-service:8000
+      - INGESTION_WS_URL=ws://ingestion-service:8000
+      - REC_ENGINE_URL=http://recommendation-engine:8000
+      - REC_ENGINE_WS_URL=ws://recommendation-engine:8000
+      - TRADING_SERVICE_URL=http://trading-service:8000
+      - PREDICTION_SERVICE_URL=http://prediction-service:8000
+      - MARKET_DATA_SERVICE_URL=http://market-data-service:8000
+      - SIGNAL_PROCESSING_URL=http://signal-processing:8000
+      - AI_MODEL_SERVICE_URL=http://ai-model-service:8000
+      - ALERT_SERVICE_URL=http://alert-service:8000
+      - INTRADAY_AGENT_URL=http://intraday-agent:8000
+      - CHART_ANALYSIS_URL=http://chart-analysis-service:8000
+    depends_on:
+      ingestion-service:
+        condition: service_started
+      recommendation-engine:
+        condition: service_started
+      signal-processing:
+        condition: service_started
+      market-data-service:
+        condition: service_started
+      prediction-service:
+        condition: service_started
+      ai-model-service:
+        condition: service_started
+      alert-service:
+        condition: service_started
+      trading-service:
+        condition: service_started
+      intraday-agent:
+        condition: service_started
+      chart-analysis-service:
+        condition: service_started
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -21,6 +55,8 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - api-gateway
 
   ingestion-service:
     build: ./services/ingestion_service
@@ -32,6 +68,18 @@ services:
       - ./data:/app/data
     environment:
       - ENV=development
+      # Docker-internal service URLs for batch_job cross-service calls
+      - MARKET_DATA_SERVICE_URL=http://market-data-service:8000
+      - REC_ENGINE_URL=http://recommendation-engine:8000
+      - INGESTION_SERVICE_URL=http://ingestion-service:8000
+      - SIGNAL_PROCESSING_URL=http://signal-processing:8000
+      - PREDICTION_SERVICE_URL=http://prediction-service:8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   signal-processing:
@@ -41,8 +89,15 @@ services:
     volumes:
       - ./services/signal_processing:/app
       - ./shared:/app/shared
+      - ./data:/app/data
     environment:
       - ENV=development
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   market-data-service:
@@ -56,6 +111,12 @@ services:
       - ENV=development
       - DHAN_CLIENT_ID=${DHAN_CLIENT_ID}
       - DHAN_ACCESS_TOKEN=${DHAN_ACCESS_TOKEN}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   recommendation-engine:
@@ -65,8 +126,17 @@ services:
     volumes:
       - ./services/recommendation_engine:/app
       - ./shared:/app/shared
+      - ./data:/app/data
     environment:
       - ENV=development
+      - PREDICTION_SERVICE_URL=http://prediction-service:8000
+      - MARKET_DATA_SERVICE_URL=http://market-data-service:8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   ai-model-service:
@@ -80,6 +150,12 @@ services:
       - ENV=development
       - PRIMARY_AI_PROVIDER=gemini
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   alert-service:
@@ -91,6 +167,12 @@ services:
       - ./shared:/app/shared
     environment:
       - ENV=development
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   prediction-service:
@@ -102,4 +184,83 @@ services:
       - ./shared:/app/shared
     environment:
       - ENV=development
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  trading-service:
+    build: ./services/trading_service
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./services/trading_service:/app
+      - ./shared:/app/shared
+      - ./data:/app/data
+    environment:
+      - ENV=development
+      - API_GATEWAY_URL=http://api-gateway:8000
+      - REC_ENGINE_URL=http://recommendation-engine:8000
+      - TRADING_SERVICE_URL=http://trading-service:8000
+      - PAPER_TRADES_FILE=/app/data/paper_trades.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  intraday-agent:
+    build: ./services/intraday_agent
+    ports:
+      - "18008:8000"
+    volumes:
+      - ./services/intraday_agent:/app
+      - ./shared:/app/shared
+      - ./data:/app/data
+    environment:
+      - ENV=development
+      - TRADING_SERVICE_URL=http://trading-service:8000
+      - REC_ENGINE_URL=http://recommendation-engine:8000
+      - MARKET_DATA_URL=http://market-data-service:8000
+      - CHART_ANALYSIS_URL=http://chart-analysis-service:8000
+      - AGENT_LOOP_INTERVAL=30
+    depends_on:
+      trading-service:
+        condition: service_started
+      recommendation-engine:
+        condition: service_started
+      market-data-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  chart-analysis-service:
+    build: ./services/chart_analysis_service
+    ports:
+      - "18009:8000"
+    volumes:
+      - ./services/chart_analysis_service:/app
+      - ./shared:/app/shared
+    environment:
+      - ENV=development
+      - MARKET_DATA_URL=http://market-data-service:8000
+    depends_on:
+      market-data-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload

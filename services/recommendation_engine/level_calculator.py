@@ -18,17 +18,17 @@ class LevelCalculator:
         if vix > 20: multiplier = 1.2
         if vix > 25: multiplier = 1.5
         
-        # SL = 0.25 * ATR * multiplier
-        stop_loss_dist = 0.25 * atr * multiplier
+        # SL = 1.0 * ATR * multiplier (realistic swing trade stop-loss)
+        stop_loss_dist = 1.0 * atr * multiplier
         
         if direction.upper() == "UP":
             sl = current_price - stop_loss_dist
             risk = current_price - sl
             
-            # Target 1: 0.5 * ATR * multiplier
-            # Target 2: 0.8 * ATR * multiplier
-            target1 = current_price + (0.5 * atr * multiplier)
-            target2 = current_price + (0.8 * atr * multiplier)
+            # Target 1: 2.0 * ATR * multiplier (R:R = 2.0)
+            # Target 2: 3.0 * ATR * multiplier (R:R = 3.0)
+            target1 = current_price + (2.0 * atr * multiplier)
+            target2 = current_price + (3.0 * atr * multiplier)
             
             return {
                 "entry": current_price,
@@ -43,8 +43,8 @@ class LevelCalculator:
             sl = current_price + stop_loss_dist
             risk = sl - current_price
             
-            target1 = current_price - (0.5 * atr * multiplier)
-            target2 = current_price - (0.8 * atr * multiplier)
+            target1 = current_price - (2.0 * atr * multiplier)
+            target2 = current_price - (3.0 * atr * multiplier)
             
             return {
                 "entry": current_price,

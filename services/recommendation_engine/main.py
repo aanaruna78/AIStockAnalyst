@@ -86,15 +86,19 @@ async def generate_recommendation(request: RecommendationRequest):
         request.symbol,
         request.signals,
         request.indicators,
-        request.screener_analysis, # Pass aggregated screener data
-        request.global_analysis # Pass global market context
+        screener_analysis=request.screener_analysis,
+        tickertape_analysis=request.tickertape_analysis,
+        global_analysis=request.global_analysis
     )
     conviction = breakdown["final_score"]
+    direction = breakdown["direction"]  # UP or DOWN, derived from scoring model
+    raw_score = breakdown.get("raw_score", 0.5)
 
-    # 2. Threshold check (e.g., conviction > 70%)
+    # 2. Threshold check — conviction is strength in either direction
     threshold = settings.MIN_CONFIDENCE_SCORE * 100
+    logger.info(f"Conviction for {request.symbol}: {conviction:.1f}% {direction} (raw={raw_score:.3f}, threshold: {threshold}%)")
     if conviction <= threshold:
-        return {"status": "ignored", "reason": "Low conviction score", "score": conviction, "threshold": threshold}
+        return {"status": "ignored", "reason": "Low conviction score", "score": conviction, "direction": direction, "threshold": threshold}
     
     # 3. Construct Waterfall Rationale
     regime = breakdown.get("regime", "CHOP")
@@ -120,8 +124,8 @@ async def generate_recommendation(request: RecommendationRequest):
         currency_text = ""
         if usd_inr is not None:
             c_color = C_RED if usd_inr > 0.2 else (C_GREEN if usd_inr < -0.2 else C_ORANGE)
-            direction = "Weakening" if usd_inr > 0.2 else ("Strengthening" if usd_inr < -0.2 else "Stable")
-            currency_text = f" | Rupee: {colorize(direction, c_color)} ({usd_inr}%)"
+            rupee_dir = "Weakening" if usd_inr > 0.2 else ("Strengthening" if usd_inr < -0.2 else "Stable")
+            currency_text = f" | Rupee: {colorize(rupee_dir, c_color)} ({usd_inr}%)"
         
         # ADR
         adr_text = ""
@@ -130,8 +134,8 @@ async def generate_recommendation(request: RecommendationRequest):
             ticker = adr.get("ticker")
             chg = adr.get("data", {}).get("change_pct", 0.0)
             if abs(chg) > 1.5:
-                direction = "Bullish" if chg > 0 else "Bearish"
-                adr_text = f" | ADR ({ticker}): {chg}% ({direction})"
+                adr_dir = "Bullish" if chg > 0 else "Bearish"
+                adr_text = f" | ADR ({ticker}): {chg}% ({adr_dir})"
             else:
                 adr_text = f" | ADR ({ticker}): {chg}% (Flat)"
 
@@ -142,30 +146,37 @@ async def generate_recommendation(request: RecommendationRequest):
 
     rationale_text = f"Market Context: {regime_desc}{global_outlook}. "
     
-    # Conviction description with uncertainty
-    conf_level = colorize("High", C_GREEN) if conviction > 80 else (colorize("Medium", C_ORANGE) if conviction > 60 else colorize("Low", C_RED))
+    # Conviction description with direction
+    conf_level = colorize("High", C_GREEN) if conviction > 60 else (colorize("Medium", C_ORANGE) if conviction > 40 else colorize("Low", C_RED))
+    dir_label = colorize("LONG", C_GREEN) if direction == "UP" else colorize("SHORT", C_RED)
     
     # Extract detailed scores from the nested 'breakdown' dict
     details = breakdown.get("breakdown", {})
     ml_confidence = details.get("ml_model", {}).get("confidence", 0.5)
     
     # 5. Full Score Breakdown for UI
+    # Display sub-scores as directional: positive = bullish contribution, negative = bearish
+    def _directional_contrib(score_0to100, weight):
+        """Convert 0-100 score (50=neutral) to signed contribution."""
+        return round((score_0to100 - 50) * weight * 2, 1)
+    
     scores = {
-        "Sentiment": round(details.get("sentiment_score", 0) * weights.get("sentiment", settings.BASE_WEIGHT_SENTIMENT), 1),
-        "Technical": round(details.get("technical_score", 0) * weights.get("technical_rules", settings.BASE_WEIGHT_TECHNICAL), 1),
-        "AI Model": round(details.get("ml_model", {}).get("probability", 0.5) * 100 * weights.get("ml_xgboost", settings.BASE_WEIGHT_ML), 1),
-        "Fundamental": round(details.get("fundamental_score", 0) * weights.get("fundamental", settings.BASE_WEIGHT_FUNDAMENTAL), 1),
-        "Analyst": round(details.get("analyst_score", 0) * weights.get("analyst_ratings", settings.BASE_WEIGHT_ANALYST), 1)
+        "Sentiment": _directional_contrib(details.get("sentiment_score", 50), weights.get("sentiment", settings.BASE_WEIGHT_SENTIMENT)),
+        "Technical": _directional_contrib(details.get("technical_score", 50), weights.get("technical_rules", settings.BASE_WEIGHT_TECHNICAL)),
+        "AI Model": _directional_contrib((details.get("ml_model", {}).get("probability", 0.5)) * 100, weights.get("ml_xgboost", settings.BASE_WEIGHT_ML)),
+        "Fundamental": _directional_contrib(details.get("fundamental_score", 50), weights.get("fundamental", settings.BASE_WEIGHT_FUNDAMENTAL)),
+        "Analyst": _directional_contrib(details.get("analyst_score", 50), weights.get("analyst_ratings", settings.BASE_WEIGHT_ANALYST))
     }
-    logger.info(f"Score Breakdown for {request.symbol}: {scores}")
+    logger.info(f"Score Breakdown for {request.symbol} ({direction}): {scores}")
     
-    rationale_text += f"AI Confidence: {round(conviction)}% ({conf_level}), "
+    rationale_text += f"Signal: {dir_label} | AI Confidence: {round(conviction)}% ({conf_level}), "
     
-    # Identify top driver
-    top_driver = max(scores, key=scores.get)
+    # Identify top driver by absolute contribution
+    top_driver = max(scores, key=lambda k: abs(scores[k]))
     driver_val = scores[top_driver]
+    driver_dir = "bullish" if driver_val > 0 else "bearish"
     
-    rationale_text += f"driven primarily by {top_driver} signals (+{driver_val}% contribution). "
+    rationale_text += f"driven primarily by {top_driver} signals ({driver_val:+.1f}% {driver_dir} contribution). "
     
     # Technical Key Details
     rsi = request.indicators.get("rsi", "N/A")
@@ -367,17 +378,19 @@ async def generate_recommendation(request: RecommendationRequest):
     rationale = rationale_text
     logger.info(f"Generated rationale for {request.symbol}: {rationale}")
 
-    # 4. Determine Direction
-    direction = "UP" if np.mean([s["sentiment"] for s in request.signals]) > 0 else "DOWN"
+    # Direction already determined by scoring model (stored in `direction` variable)
     
     # 5. Calculate Levels (VIX Aware)
     vix = request.global_analysis.get("vix", 0.0) if request.global_analysis else 0.0
+    logger.info(f"Level calc for {request.symbol}: price={request.current_price}, atr={request.atr}, dir={direction}, vix={vix}")
     levels = level_calculator.calculate_levels(request.current_price, request.atr, direction, vix)
     if not levels:
+        logger.warning(f"Failed to calculate levels for {request.symbol}: atr={request.atr}")
         return {"status": "error", "reason": "Failed to calculate levels"}
     
     # 6. Risk-Reward Guardrail
     if levels["rr"] < 2.0:
+        logger.info(f"Insufficient R:R for {request.symbol}: rr={levels['rr']}")
         return {"status": "ignored", "reason": "Insufficient risk-reward ratio", "rr": levels["rr"]}
     
     # Add Volatility Info to Rationale

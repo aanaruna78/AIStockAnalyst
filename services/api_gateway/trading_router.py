@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 import httpx
 from shared.config import settings
 
-TRADING_SERVICE_URL = "http://localhost:8005"
+TRADING_SERVICE_URL = settings.TRADING_SERVICE_URL
 
 router = APIRouter(prefix="/trading", tags=["trading"])
 

@@ -1,0 +1,60 @@
+services:
+  api-gateway:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    restart: unless-stopped
+    volumes: []
+    command: sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 3000"
+
+  ingestion-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  signal-processing:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  market-data-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  recommendation-engine:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  ai-model-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  alert-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  prediction-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  trading-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  intraday-agent:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+  chart-analysis-service:
+    restart: unless-stopped
+    volumes: []
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000

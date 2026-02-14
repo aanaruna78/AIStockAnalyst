@@ -9,6 +9,9 @@ from shared.models import User
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
+REC_ENGINE_URL = settings.REC_ENGINE_URL
+REC_ENGINE_WS_URL = settings.REC_ENGINE_WS_URL
+
 @router.get("/active")
 async def get_active_recommendations(
     risk: Optional[str] = None, 
@@ -33,7 +36,7 @@ async def get_active_recommendations(
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(f"http://localhost:18004/active", params=params)
+            response = await client.get(f"{REC_ENGINE_URL}/active", params=params)
             return response.json()
         except Exception:
             return []
@@ -41,14 +44,14 @@ async def get_active_recommendations(
 @router.post("/generate")
 async def trigger_recommendation(data: dict):
     async with httpx.AsyncClient() as client:
-        response = await client.post(f"http://localhost:18004/generate", json=data)
+        response = await client.post(f"{REC_ENGINE_URL}/generate", json=data)
         return response.json()
 
 @router.websocket("/ws")
 async def websocket_recommendations(websocket: WebSocket):
     await websocket.accept()
     try:
-        async with websockets.connect("ws://localhost:18004/ws") as target_ws:
+        async with websockets.connect(f"{REC_ENGINE_WS_URL}/ws") as target_ws:
             while True:
                 try:
                     data = await target_ws.recv()
@@ -59,7 +62,7 @@ async def websocket_recommendations(websocket: WebSocket):
                     break
     except Exception as e:
         import logging
-        logging.error(f"Rec WS Proxy Error (connecting to ws://localhost:18004/ws): {e}")
+        logging.error(f"Rec WS Proxy Error (connecting to {REC_ENGINE_WS_URL}/ws): {e}")
     finally:
         try:
             await websocket.close()
