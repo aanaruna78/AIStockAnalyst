@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
+    allowedHosts: ['sf.thinkhivelabs.com'],
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     },
@@ -20,5 +21,8 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  preview: {
+    allowedHosts: ['sf.thinkhivelabs.com'],
   },
 })
