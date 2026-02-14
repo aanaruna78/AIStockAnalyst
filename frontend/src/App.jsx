@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CssBaseline, Box, Snackbar, Alert as MuiAlert } from '@mui/material';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeContextProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import '@fontsource/inter';
 import '@fontsource/outfit';
@@ -13,8 +14,19 @@ import Watchlist from './pages/WatchlistNew';
 import Alerts from './pages/AlertsNew';
 import Portfolio from './pages/Portfolio';
 import AgentDashboard from './pages/AgentDashboard';
+import Profile from './pages/Profile';
 import { fetchAlerts } from './services/api';
 import { isBullish } from './utils/formatters';
+
+// Auth guard — redirects to /onboarding if not logged in
+const RequireAuth = ({ children }) => {
+    const { user, loading } = useAuth();
+    const location = useLocation();
+
+    if (loading) return null; // or a loading spinner
+    if (!user) return <Navigate to="/onboarding" state={{ from: location }} replace />;
+    return children;
+};
 
 function App() {
   const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
@@ -55,38 +67,41 @@ function App() {
   return (
     <ThemeContextProvider>
       <CssBaseline />
-      <Router>
-        <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
-          <Header />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/recommendation/:id" element={<RecommendationDetail />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/alerts" element={<Alerts />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/agent" element={<AgentDashboard />} />
-          </Routes>
-        </Box>
+      <AuthProvider>
+        <Router>
+          <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+            <Header />
+            <Routes>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
+              <Route path="/recommendation/:id" element={<RequireAuth><RecommendationDetail /></RequireAuth>} />
+              <Route path="/watchlist" element={<RequireAuth><Watchlist /></RequireAuth>} />
+              <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
+              <Route path="/portfolio" element={<RequireAuth><Portfolio /></RequireAuth>} />
+              <Route path="/agent" element={<RequireAuth><AgentDashboard /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+            </Routes>
+          </Box>
 
-        {/* Global toast for new alerts */}
-        <Snackbar
-          open={toast.open}
-          autoHideDuration={6000}
-          onClose={() => setToast(prev => ({ ...prev, open: false }))}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <MuiAlert
+          {/* Global toast for new alerts */}
+          <Snackbar
+            open={toast.open}
+            autoHideDuration={6000}
             onClose={() => setToast(prev => ({ ...prev, open: false }))}
-            severity={toast.severity}
-            variant="filled"
-            elevation={8}
-            sx={{ fontWeight: 600, minWidth: 300, fontSize: '0.85rem' }}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            {toast.message}
-          </MuiAlert>
-        </Snackbar>
-      </Router>
+            <MuiAlert
+              onClose={() => setToast(prev => ({ ...prev, open: false }))}
+              severity={toast.severity}
+              variant="filled"
+              elevation={8}
+              sx={{ fontWeight: 600, minWidth: 300, fontSize: '0.85rem' }}
+            >
+              {toast.message}
+            </MuiAlert>
+          </Snackbar>
+        </Router>
+      </AuthProvider>
     </ThemeContextProvider>
   );
 }

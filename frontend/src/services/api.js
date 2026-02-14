@@ -33,7 +33,11 @@ export const fetchRecommendations = async (params = {}) => {
     const { data } = await api.get('/recommendations/active', {
         params: { risk: prefs.risk, horizon: prefs.horizon, sectors: (prefs.sectors || []).join(','), ...params }
     });
-    return data;
+    // Normalise: API may return an array directly or wrap it in { recommendations: [...] }
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.recommendations)) return data.recommendations;
+    if (data && Array.isArray(data.data)) return data.data;
+    return [];
 };
 
 export const fetchRecommendationById = async (id) => {

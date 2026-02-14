@@ -11,9 +11,14 @@ const TickerBar = () => {
         const fetchData = async () => {
             try {
                 const resp = await axios.get(`${config.endpoints.scan.base}/market/status`);
-                setData(resp.data);
+                const payload = resp?.data || {};
+                setData({
+                    indices: Array.isArray(payload.indices) ? payload.indices : [],
+                    news: Array.isArray(payload.news) ? payload.news : [],
+                });
             } catch (err) {
                 console.error('Ticker fetch error:', err);
+                setData({ indices: [], news: [] });
             }
         };
 
@@ -22,7 +27,10 @@ const TickerBar = () => {
         return () => clearInterval(interval);
     }, []);
 
-    if (!data.indices.length && !data.news.length) return null;
+    const indices = Array.isArray(data.indices) ? data.indices : [];
+    const news = Array.isArray(data.news) ? data.news : [];
+
+    if (!indices.length && !news.length) return null;
 
     return (
         <Box sx={{
@@ -52,8 +60,8 @@ const TickerBar = () => {
                     {[1, 2].map((i) => (
                         <React.Fragment key={i}>
                             {/* Indices Section */}
-                            {data.indices.map((idx) => (
-                                <Box key={idx.name} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {indices.map((idx, idxIndex) => (
+                                <Box key={`${i}-idx-${idx.name || idxIndex}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Typography variant="caption" fontWeight={900} color="text.secondary">
                                         {idx.name}
                                     </Typography>
@@ -79,8 +87,8 @@ const TickerBar = () => {
                             <Box sx={{ width: 40, height: 1, bgcolor: 'rgba(255,255,255,0.1)' }} />
 
                             {/* News Section */}
-                            {data.news.map((n, index) => (
-                                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {news.map((n, index) => (
+                                <Box key={`${i}-news-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Newspaper size={14} color="#00e5ff" />
                                     {n.clickable !== false ? (
                                         <Link

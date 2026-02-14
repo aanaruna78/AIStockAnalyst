@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Box, Stepper, Step, StepLabel, Button, Typography,
-    FormControl, FormLabel, RadioGroup, FormControlLabel, Radio,
-    Card, CardContent, Container, Slider, Chip, Stack, Divider
+    RadioGroup, FormControlLabel, Radio,
+    Card, CardContent, Container, Chip, Stack, Divider, CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { useAuth } from '../context/AuthContext';
+import { config } from '../config';
 import axios from 'axios';
 
-const steps = ['Authentication', 'Risk Profile', 'Investment Horizon', 'Market Preferences'];
+const PREFERENCE_STEPS = ['Risk Profile', 'Investment Horizon', 'Market Preferences'];
 
 const Onboarding = () => {
+    const { user, login, loading: authLoading } = useAuth();
     const [activeStep, setActiveStep] = useState(0);
-    const [user, setUser] = useState(null);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         risk: 'medium',
         horizon: 'swing',
@@ -20,16 +23,36 @@ const Onboarding = () => {
     });
     const navigate = useNavigate();
 
+    // If user is already logged in and onboarded, go to dashboard
+    useEffect(() => {
+        if (!authLoading && user && user.onboarded) {
+            navigate('/', { replace: true });
+        }
+    }, [user, authLoading, navigate]);
+
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/auth/google`, {
+            const response = await axios.post(`${config.API_BASE_URL}/auth/google`, {
                 token: credentialResponse.credential
             });
 
-            if (response.data.access_token) {
-                localStorage.setItem('token', response.data.access_token);
-                setUser(response.data.user || { name: 'User' });
-                setActiveStep(1); // Move to next step after successful login
+            const { access_token, user: userData } = response.data;
+            if (access_token) {
+                login(access_token, userData);
+
+                // If user already has preferences saved, skip onboarding
+                if (userData?.onboarded) {
+                    if (userData.preferences) {
+                        localStorage.setItem('user_preferences', JSON.stringify({
+                            risk: userData.preferences.risk_tolerance || 'medium',
+                            horizon: userData.preferences.investment_horizon || 'swing',
+                            sectors: userData.preferences.preferred_sectors || []
+                        }));
+                    }
+                    navigate('/', { replace: true });
+                    return;
+                }
+                setActiveStep(0);
             }
         } catch (error) {
             console.error('Google Login Error:', error);
@@ -38,13 +61,13 @@ const Onboarding = () => {
     };
 
     const handleNext = async () => {
-        if (activeStep === steps.length - 1) {
-            // Finalize onboarding
+        if (activeStep === PREFERENCE_STEPS.length - 1) {
+            setSaving(true);
             localStorage.setItem('user_preferences', JSON.stringify(formData));
             try {
                 const token = localStorage.getItem('token');
                 if (token) {
-                    await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/auth/preferences`, {
+                    await axios.post(`${config.API_BASE_URL}/auth/preferences`, {
                         risk_tolerance: formData.risk,
                         investment_horizon: formData.horizon,
                         preferred_sectors: formData.sectors
@@ -54,8 +77,10 @@ const Onboarding = () => {
                 }
             } catch (error) {
                 console.error('Failed to save preferences:', error);
+            } finally {
+                setSaving(false);
             }
-            navigate('/');
+            navigate('/', { replace: true });
         } else {
             setActiveStep((prev) => prev + 1);
         }
@@ -72,110 +97,141 @@ const Onboarding = () => {
         }));
     };
 
-    const renderStepContent = (step) => {
-        switch (step) {
-            case 0:
-                return (
-                    <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <Typography variant="h6" align="center">Sign in to sync your portfolio and signals</Typography>
-                        <GoogleLogin
-                            onSuccess={handleGoogleSuccess}
-                            onError={() => console.log('Login Failed')}
-                            useOneTap
-                            theme="filled_blue"
-                            shape="pill"
-                        />
-                        <Divider sx={{ width: '100%', my: 2 }}>OR</Divider>
-                        <Button variant="text" onClick={() => setActiveStep(1)}>Skip for now</Button>
+    // Show login page if not authenticated
+    if (!user) {
+        return (
+            <Container maxWidth="sm" sx={{ py: 8 }}>
+                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                    <Box sx={{
+                        p: 4, textAlign: 'center',
+                        background: 'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(129,140,248,0.08) 100%)'
+                    }}>
+                        <Typography variant="h3" fontWeight={900} sx={{ letterSpacing: '-0.03em', mb: 1 }}>
+                            SignalForge
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
+                            AI-Powered Stock Trading Signals
+                        </Typography>
                     </Box>
-                );
-            case 1:
-                return (
-                    <Box sx={{ mt: 3 }}>
-                        <Typography variant="h6" gutterBottom>How much risk can you handle?</Typography>
-                        <RadioGroup
-                            value={formData.risk}
-                            onChange={(e) => setFormData({ ...formData, risk: e.target.value })}
-                        >
-                            <FormControlLabel value="low" control={<Radio color="primary" />} label="Low (Preserve Capital)" />
-                            <FormControlLabel value="medium" control={<Radio color="primary" />} label="Medium (Balanced Growth)" />
-                            <FormControlLabel value="high" control={<Radio color="primary" />} label="High (Aggressive Returns)" />
-                        </RadioGroup>
-                    </Box>
-                );
-            case 2:
-                return (
-                    <Box sx={{ mt: 3 }}>
-                        <Typography variant="h6" gutterBottom>What is your usual holding period?</Typography>
-                        <RadioGroup
-                            value={formData.horizon}
-                            onChange={(e) => setFormData({ ...formData, horizon: e.target.value })}
-                        >
-                            <FormControlLabel value="intraday" control={<Radio color="primary" />} label="Intraday (Day Trading)" />
-                            <FormControlLabel value="swing" control={<Radio color="primary" />} label="Swing (Days to Weeks)" />
-                            <FormControlLabel value="long_term" control={<Radio color="primary" />} label="Long Term (Months to Years)" />
-                        </RadioGroup>
-                    </Box>
-                );
-            case 3:
-                return (
-                    <Box sx={{ mt: 3 }}>
-                        <Typography variant="h6" gutterBottom>Select sectors you are interested in:</Typography>
-                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
-                            {['IT', 'Banking', 'Pharma', 'Auto', 'Energy', 'FMCG', 'Real Estate'].map((sector) => (
-                                <Chip
-                                    key={sector}
-                                    label={sector}
-                                    onClick={() => handleSectorToggle(sector)}
-                                    color={formData.sectors.includes(sector) ? "primary" : "default"}
-                                    variant={formData.sectors.includes(sector) ? "filled" : "outlined"}
-                                    sx={{ mb: 1 }}
-                                />
+                    <CardContent sx={{ p: 4 }}>
+                        <Typography variant="h6" align="center" sx={{ mb: 1 }}>
+                            Sign in to get started
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 4 }}>
+                            Access real-time market signals, AI analysis, and portfolio tracking
+                        </Typography>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                            <GoogleLogin
+                                onSuccess={handleGoogleSuccess}
+                                onError={() => console.log('Login Failed')}
+                                useOneTap
+                                theme="filled_blue"
+                                shape="pill"
+                                size="large"
+                                width={300}
+                            />
+                        </Box>
+
+                        <Divider sx={{ my: 3 }}>
+                            <Typography variant="caption" color="text.secondary">FEATURES</Typography>
+                        </Divider>
+
+                        <Stack spacing={1.5}>
+                            {[
+                                'Real-time AI-powered buy/sell signals',
+                                'Multi-source market data analysis',
+                                'Paper trading & portfolio tracking',
+                                'Personalized risk-based recommendations'
+                            ].map((feature) => (
+                                <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
+                                    <Typography variant="body2" color="text.secondary">{feature}</Typography>
+                                </Box>
                             ))}
                         </Stack>
-                    </Box>
-                );
-            default:
-                return null;
-        }
-    };
+                    </CardContent>
+                </Card>
+            </Container>
+        );
+    }
 
+    // Show preference steps for new (not-yet-onboarded) users
     return (
         <Container maxWidth="sm" sx={{ py: 8 }}>
             <Card>
                 <CardContent sx={{ p: 4 }}>
-                    <Typography variant="h4" component="h1" align="center" gutterBottom color="primary">
-                        Welcome to SignalForge
+                    <Typography variant="h4" component="h1" align="center" gutterBottom color="primary" fontWeight={800}>
+                        Welcome, {user.full_name?.split(' ')[0] || 'there'}!
                     </Typography>
                     <Typography variant="body1" align="center" color="text.secondary" sx={{ mb: 4 }}>
-                        Tailor your experience for high-conviction signals.
+                        Let's tailor your experience for high-conviction signals.
                     </Typography>
 
                     <Stepper activeStep={activeStep} alternativeLabel>
-                        {steps.map((label) => (
+                        {PREFERENCE_STEPS.map((label) => (
                             <Step key={label}>
                                 <StepLabel>{label}</StepLabel>
                             </Step>
                         ))}
                     </Stepper>
 
-                    {renderStepContent(activeStep)}
+                    <Box sx={{ mt: 4 }}>
+                        {activeStep === 0 && (
+                            <Box>
+                                <Typography variant="h6" gutterBottom>How much risk can you handle?</Typography>
+                                <RadioGroup
+                                    value={formData.risk}
+                                    onChange={(e) => setFormData({ ...formData, risk: e.target.value })}
+                                >
+                                    <FormControlLabel value="low" control={<Radio color="primary" />} label="Low (Preserve Capital)" />
+                                    <FormControlLabel value="medium" control={<Radio color="primary" />} label="Medium (Balanced Growth)" />
+                                    <FormControlLabel value="high" control={<Radio color="primary" />} label="High (Aggressive Returns)" />
+                                </RadioGroup>
+                            </Box>
+                        )}
+                        {activeStep === 1 && (
+                            <Box>
+                                <Typography variant="h6" gutterBottom>What is your usual holding period?</Typography>
+                                <RadioGroup
+                                    value={formData.horizon}
+                                    onChange={(e) => setFormData({ ...formData, horizon: e.target.value })}
+                                >
+                                    <FormControlLabel value="intraday" control={<Radio color="primary" />} label="Intraday (Day Trading)" />
+                                    <FormControlLabel value="swing" control={<Radio color="primary" />} label="Swing (Days to Weeks)" />
+                                    <FormControlLabel value="long_term" control={<Radio color="primary" />} label="Long Term (Months to Years)" />
+                                </RadioGroup>
+                            </Box>
+                        )}
+                        {activeStep === 2 && (
+                            <Box>
+                                <Typography variant="h6" gutterBottom>Select sectors you are interested in:</Typography>
+                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+                                    {['IT', 'Banking', 'Pharma', 'Auto', 'Energy', 'FMCG', 'Real Estate', 'Metals', 'Infrastructure'].map((sector) => (
+                                        <Chip
+                                            key={sector}
+                                            label={sector}
+                                            onClick={() => handleSectorToggle(sector)}
+                                            color={formData.sectors.includes(sector) ? "primary" : "default"}
+                                            variant={formData.sectors.includes(sector) ? "filled" : "outlined"}
+                                            sx={{ mb: 1 }}
+                                        />
+                                    ))}
+                                </Stack>
+                            </Box>
+                        )}
+                    </Box>
 
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 6 }}>
-                        <Button
-                            disabled={activeStep === 0}
-                            onClick={handleBack}
-                            variant="outlined"
-                        >
-                            Back
-                        </Button>
+                        <Button disabled={activeStep === 0} onClick={handleBack} variant="outlined">Back</Button>
                         <Button
                             variant="contained"
-                            disabled={activeStep === 0 && !user}
                             onClick={handleNext}
+                            disabled={saving}
+                            startIcon={saving ? <CircularProgress size={16} /> : null}
                             sx={{ boxShadow: '0 0 15px rgba(0, 242, 254, 0.4)' }}
                         >
-                            {activeStep === steps.length - 1 ? 'Get Started' : 'Next'}
+                            {activeStep === PREFERENCE_STEPS.length - 1 ? 'Get Started' : 'Next'}
                         </Button>
                     </Box>
                 </CardContent>

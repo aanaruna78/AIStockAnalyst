@@ -7,5 +7,18 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
+    },
   },
 })

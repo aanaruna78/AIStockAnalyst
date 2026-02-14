@@ -3,12 +3,12 @@ import {
     Box, Typography, Grid, Card, CardContent, Chip, Button, Skeleton,
     IconButton, Dialog, DialogTitle, DialogContent, Stack, Tooltip,
     FormControl, Select, MenuItem, InputLabel, LinearProgress, Tabs, Tab,
-    TextField, InputAdornment, Badge, Divider, Avatar, alpha, useTheme
+    TextField, InputAdornment, Badge, Divider, Avatar, alpha, useTheme, Fab
 } from '@mui/material';
 import {
     ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, Clock, ShieldCheck,
     Info, RefreshCw, Loader2, Search, Filter, ChevronRight, Activity,
-    Target, AlertTriangle, BarChart3, Zap, Eye, BookOpen
+    Target, AlertTriangle, BarChart3, Zap, Eye, BookOpen, Terminal, X
 } from 'lucide-react';
 import { useRecommendations } from '../hooks/useRecommendations';
 import RationaleRenderer from '../components/RationaleRenderer';
@@ -166,7 +166,7 @@ const SignalCard = ({ rec, onViewReport }) => {
 
                 {/* Targets */}
                 <Grid container spacing={1} sx={{ mb: 2 }}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(bullish ? '#10b981' : '#ef4444', 0.06), border: `1px solid ${alpha(bullish ? '#10b981' : '#ef4444', 0.1)}` }}>
                             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <Target size={10} /> TARGET
@@ -176,7 +176,7 @@ const SignalCard = ({ rec, onViewReport }) => {
                             </Typography>
                         </Box>
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                         <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(bullish ? '#ef4444' : '#10b981', 0.06), border: `1px solid ${alpha(bullish ? '#ef4444' : '#10b981', 0.1)}` }}>
                             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <ShieldCheck size={10} /> STOP LOSS
@@ -249,7 +249,7 @@ const StatsBar = ({ recommendations }) => {
     return (
         <Grid container spacing={2} sx={{ mb: 3 }}>
             {items.map((item) => (
-                <Grid item xs={6} md={3} key={item.label}>
+                <Grid size={{ xs: 6, md: 3 }} key={item.label}>
                     <Box sx={{
                         p: 2, borderRadius: 3,
                         bgcolor: 'background.paper',
@@ -280,10 +280,12 @@ const Dashboard = () => {
     const [selectedRec, setSelectedRec] = useState(null);
     const [filterTab, setFilterTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [scanLogOpen, setScanLogOpen] = useState(false);
+    const recs = Array.isArray(recommendations) ? recommendations : [];
 
     const filteredRecs = useMemo(() => {
-        let filtered = recommendations
-            .filter(r => (r.conviction || r.confidence || 0) > 0 && r.rationale !== 'AI Analysis pending...')
+        let filtered = recs
+            .filter(r => (r.conviction || r.confidence || 0) >= 20 && r.rationale !== 'AI Analysis pending...')
             .sort((a, b) => (b.conviction || b.confidence || 0) - (a.conviction || a.confidence || 0));
 
         if (filterTab === 'long') filtered = filtered.filter(r => isBullish(r.direction));
@@ -295,7 +297,7 @@ const Dashboard = () => {
         }
 
         return filtered;
-    }, [recommendations, filterTab, searchQuery]);
+    }, [recs, filterTab, searchQuery]);
 
     return (
         <Box sx={{ bgcolor: 'background.default', position: 'fixed', top: 64, left: 0, right: 0, bottom: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -316,7 +318,7 @@ const Dashboard = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <FormControl size="small" sx={{ minWidth: 120 }}>
                                 <InputLabel sx={{ fontSize: '0.8rem' }}>Auto-Scan</InputLabel>
-                                <Select value={scanConfig.interval_minutes} label="Auto-Scan" onChange={(e) => changeInterval(e.target.value)} sx={{ borderRadius: 2, fontSize: '0.75rem' }}>
+                                <Select value={scanConfig?.interval_minutes ?? 10} label="Auto-Scan" onChange={(e) => changeInterval(e.target.value)} sx={{ borderRadius: 2, fontSize: '0.75rem' }}>
                                     <MenuItem value={0}>Off</MenuItem>
                                     <MenuItem value={1}>1 min</MenuItem>
                                     <MenuItem value={5}>5 min</MenuItem>
@@ -352,15 +354,15 @@ const Dashboard = () => {
                     )}
 
                     {/* Stats */}
-                    {!loading && <StatsBar recommendations={recommendations.filter(r => (r.conviction || r.confidence || 0) > 0)} />}
+                    {!loading && <StatsBar recommendations={recs.filter(r => (r.conviction || r.confidence || 0) > 0)} />}
 
                     {/* Filters */}
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, gap: 2 }}>
                         <Tabs value={filterTab} onChange={(_, v) => setFilterTab(v)}
                             sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, fontSize: '0.8rem' } }}>
-                            <Tab value="all" label={`All (${recommendations.filter(r => (r.conviction || r.confidence || 0) > 0).length})`} />
-                            <Tab value="long" label={`Long (${recommendations.filter(r => isBullish(r.direction)).length})`} sx={{ color: '#10b981' }} />
-                            <Tab value="short" label={`Short (${recommendations.filter(r => !isBullish(r.direction)).length})`} sx={{ color: '#ef4444' }} />
+                            <Tab value="all" label={`All (${recs.filter(r => (r.conviction || r.confidence || 0) > 0).length})`} />
+                            <Tab value="long" label={`Long (${recs.filter(r => isBullish(r.direction)).length})`} sx={{ color: '#10b981' }} />
+                            <Tab value="short" label={`Short (${recs.filter(r => !isBullish(r.direction)).length})`} sx={{ color: '#ef4444' }} />
                         </Tabs>
                         <TextField size="small" placeholder="Search symbol..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Search size={14} color="#64748b" /></InputAdornment> } }}
@@ -371,12 +373,12 @@ const Dashboard = () => {
                     <Grid container spacing={2}>
                         {loading ? (
                             [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                                <Grid item xs={12} sm={6} md={4} lg={3} key={i}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={i}>
                                     <Skeleton variant="rectangular" height={280} sx={{ borderRadius: 4 }} />
                                 </Grid>
                             ))
                         ) : filteredRecs.length === 0 ? (
-                            <Grid item xs={12}>
+                            <Grid size={12}>
                                 <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
                                     <BarChart3 size={48} strokeWidth={1} style={{ opacity: 0.3, marginBottom: 16 }} />
                                     <Typography variant="h6" fontWeight={600} color="text.secondary">No signals match your criteria</Typography>
@@ -386,24 +388,46 @@ const Dashboard = () => {
                                 </Box>
                             </Grid>
                         ) : filteredRecs.map((rec) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={rec.id}>
+                            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={rec.id}>
                                 <SignalCard rec={rec} onViewReport={setSelectedRec} />
                             </Grid>
                         ))}
                     </Grid>
                 </Box>
-
-                {/* Sidebar */}
-                <Box sx={{
-                    width: { xs: '100%', lg: 400, xl: 480 },
-                    flexShrink: 0,
-                    display: { xs: 'none', lg: 'flex' },
-                    flexDirection: 'column',
-                    pt: 8,
-                }}>
-                    <LiveLogTerminal logs={logs} />
-                </Box>
             </Box>
+
+            {/* Floating Scan Console Button */}
+            <Tooltip title="Scan Console">
+                <Fab
+                    size="medium"
+                    onClick={() => setScanLogOpen(true)}
+                    sx={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        bgcolor: '#161b22',
+                        color: '#10b981',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        '&:hover': { bgcolor: '#1c2333' },
+                        zIndex: 1200,
+                    }}
+                >
+                    <Badge
+                        badgeContent={logs.length > 0 ? logs.length : null}
+                        color="success"
+                        max={99}
+                        sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 16, height: 16 } }}
+                    >
+                        <Terminal size={20} />
+                    </Badge>
+                </Fab>
+            </Tooltip>
+
+            {/* Scan Console Dialog */}
+            <Dialog open={scanLogOpen} onClose={() => setScanLogOpen(false)} maxWidth="md" fullWidth
+                PaperProps={{ sx: { bgcolor: '#0d1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 3 } }}>
+                <LiveLogTerminal logs={logs} />
+            </Dialog>
 
             {/* AI Analysis Report Dialog */}
             <Dialog open={Boolean(selectedRec)} onClose={() => setSelectedRec(null)} maxWidth="sm" fullWidth>
@@ -442,7 +466,7 @@ const Dashboard = () => {
                                     </Typography>
                                     <Grid container spacing={1}>
                                         {Object.entries(selectedRec.score_breakdown).map(([label, val]) => (
-                                            <Grid item xs={4} key={label}>
+                                            <Grid size={4} key={label}>
                                                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                                                     <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.5rem' }}>{label}</Typography>
                                                     <Typography variant="body2" fontWeight={800} sx={{ color: val > 0 ? '#10b981' : val < 0 ? '#ef4444' : 'text.secondary' }}>
@@ -461,7 +485,7 @@ const Dashboard = () => {
                             </Typography>
                             <Grid container spacing={2}>
                                 {selectedRec.target2 && (
-                                    <Grid item xs={6}>
+                                    <Grid size={6}>
                                         <Box sx={{ p: 2, borderRadius: 3, bgcolor: getDirectionBg(selectedRec.direction), border: `1px solid ${alpha(getDirectionColor(selectedRec.direction), 0.15)}` }}>
                                             <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem' }}>EXTENDED TARGET (T2)</Typography>
                                             <Typography variant="h6" fontWeight={800} sx={{ color: getDirectionColor(selectedRec.direction) }}>
@@ -470,7 +494,7 @@ const Dashboard = () => {
                                         </Box>
                                     </Grid>
                                 )}
-                                <Grid item xs={selectedRec.target2 ? 6 : 12}>
+                                <Grid size={selectedRec.target2 ? 6 : 12}>
                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha('#f59e0b', 0.04), border: `1px solid ${alpha('#f59e0b', 0.15)}` }}>
                                         <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem' }}>TRAILING STRATEGY</Typography>
                                         <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5 }}>

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Box, Button, IconButton, Avatar, Menu, MenuItem, Tooltip, Badge, Chip, alpha, Divider } from '@mui/material';
-import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, Activity, TrendingUp, BarChart3, Bookmark, Bot, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { AppBar, Toolbar, Typography, Box, Button, IconButton, Avatar, Menu, MenuItem, Tooltip, Divider, alpha } from '@mui/material';
+import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap } from 'lucide-react';
 import { useColorMode } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { config } from '../config';
 
 const navItems = [
     { label: 'Signals', path: '/', icon: <Zap size={16} /> },
@@ -16,36 +15,16 @@ const navItems = [
 
 const Header = () => {
     const { toggleColorMode } = useColorMode();
-    const [user, setUser] = useState(null);
+    const { user, logout } = useAuth();
     const [anchorEl, setAnchorEl] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            const token = localStorage.getItem('token');
-            if (!token) return;
-            try {
-                const response = await axios.get(config.endpoints.auth.me, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setUser(response.data);
-            } catch (error) {
-                if (error.response?.status === 401 || error.response?.status === 404) {
-                    localStorage.removeItem('token');
-                    setUser(null);
-                }
-            }
-        };
-        fetchUser();
-    }, []);
 
     const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
+        logout();
         handleMenuClose();
         navigate('/onboarding');
     };
@@ -111,28 +90,36 @@ const Header = () => {
 
                     {user ? (
                         <>
-                            <Tooltip title="Account">
+                            <Tooltip title={user.full_name || 'Account'}>
                                 <IconButton onClick={handleMenuOpen} size="small" sx={{ ml: 0.5 }}>
-                                    <Avatar sx={{
-                                        width: 32, height: 32, fontSize: '0.85rem', fontWeight: 700,
-                                        background: 'linear-gradient(135deg, #38bdf8, #818cf8)',
-                                        color: '#fff',
-                                    }}>
-                                        {user.full_name ? user.full_name[0].toUpperCase() : 'U'}
+                                    <Avatar
+                                        src={user.picture || ''}
+                                        sx={{
+                                            width: 32, height: 32, fontSize: '0.85rem', fontWeight: 700,
+                                            background: user.picture ? 'transparent' : 'linear-gradient(135deg, #38bdf8, #818cf8)',
+                                            color: '#fff',
+                                        }}
+                                    >
+                                        {!user.picture && (user.full_name ? user.full_name[0].toUpperCase() : 'U')}
                                     </Avatar>
                                 </IconButton>
                             </Tooltip>
                             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}
                                 transformOrigin={{ horizontal: 'right', vertical: 'top' }}
                                 anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                                slotProps={{ paper: { sx: { mt: 1.5, minWidth: 200, borderRadius: 3, border: '1px solid', borderColor: 'divider' } } }}>
-                                <Box sx={{ px: 2, py: 1.5 }}>
-                                    <Typography variant="subtitle2" fontWeight={700}>{user.full_name}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+                                slotProps={{ paper: { sx: { mt: 1.5, minWidth: 220, borderRadius: 3, border: '1px solid', borderColor: 'divider' } } }}>
+                                <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                    <Avatar src={user.picture || ''} sx={{ width: 36, height: 36 }}>
+                                        {!user.picture && (user.full_name ? user.full_name[0].toUpperCase() : 'U')}
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle2" fontWeight={700}>{user.full_name}</Typography>
+                                        <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+                                    </Box>
                                 </Box>
                                 <Divider />
-                                <MenuItem onClick={() => { handleMenuClose(); navigate('/portfolio'); }}>
-                                    <UserIcon size={16} style={{ marginRight: 12 }} /> Profile
+                                <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
+                                    <UserIcon size={16} style={{ marginRight: 12 }} /> Profile & Preferences
                                 </MenuItem>
                                 <MenuItem onClick={handleLogout}>
                                     <LogOut size={16} style={{ marginRight: 12 }} /> Logout

@@ -10,6 +10,7 @@ from ingestion_router import router as ingestion_router
 from trading_router import router as trading_router
 from agent_router import router as agent_router
 from chart_router import router as chart_router
+from alert_router import router as alert_router
 import time
 from shared.config import settings
 
@@ -64,6 +65,7 @@ app.include_router(ingestion_router, prefix="/api/v1")
 app.include_router(trading_router, prefix="/api/v1")
 app.include_router(agent_router, prefix="/api/v1")
 app.include_router(chart_router, prefix="/api/v1")
+app.include_router(alert_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

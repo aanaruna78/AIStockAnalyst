@@ -6,7 +6,9 @@ export const useRecommendations = () => {
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [scanConfig, setScanConfig] = useState({ interval_minutes: 10, enabled: true, last_scan_time: null });
+    const defaultScanConfig = { interval_minutes: 10, enabled: true, last_scan_time: null };
+    const [scanConfig, setScanConfig] = useState(defaultScanConfig);
+    const normalizeScanConfig = (cfg) => ({ ...defaultScanConfig, ...cfg });
     const [crawling, setCrawling] = useState(false);
     const [crawlProgress, setCrawlProgress] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -16,7 +18,7 @@ export const useRecommendations = () => {
             setLoading(true);
             const [recs, cfg] = await Promise.all([fetchRecommendations(), fetchScanConfig()]);
             setRecommendations(recs || []);
-            setScanConfig(cfg);
+            setScanConfig(normalizeScanConfig(cfg));
             setError(null);
         } catch (err) {
             setError(err.message);
@@ -59,7 +61,7 @@ export const useRecommendations = () => {
                     if (data.status === 'completed') {
                         setLogs(prev => [...prev, { msg: '✓ Scan cycle complete', time: Date.now() }]);
                         setTimeout(() => setCrawlProgress(null), 3000);
-                        fetchScanConfig().then(setScanConfig).catch(() => {});
+                        fetchScanConfig().then(c => setScanConfig(normalizeScanConfig(c))).catch(() => {});
                     }
                     if (data.status === 'starting') {
                         setLogs([{ msg: '→ Initiating market scan...', time: Date.now() }]);
@@ -80,7 +82,7 @@ export const useRecommendations = () => {
         try {
             await triggerCrawl();
             const cfg = await fetchScanConfig();
-            setScanConfig(cfg);
+            setScanConfig(normalizeScanConfig(cfg));
         } catch (err) {
             setLogs(prev => [...prev, { msg: `✗ Scan failed: ${err.message}`, time: Date.now() }]);
         } finally {
@@ -91,7 +93,7 @@ export const useRecommendations = () => {
     const changeInterval = useCallback(async (interval) => {
         try {
             const cfg = await updateScanConfig(interval, interval > 0);
-            setScanConfig(cfg);
+            setScanConfig(normalizeScanConfig(cfg));
         } catch {}
     }, []);
 

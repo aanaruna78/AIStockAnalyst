@@ -23,7 +23,9 @@ export const config = {
         auth: {
             login: `${API_BASE_URL}/auth/login`,
             me: `${API_BASE_URL}/auth/me`,
-            signup: `${API_BASE_URL}/auth/signup`
+            signup: `${API_BASE_URL}/auth/signup`,
+            google: `${API_BASE_URL}/auth/google`,
+            preferences: `${API_BASE_URL}/auth/preferences`,
         },
         recommendations: {
             active: `${API_BASE_URL}/recommendations/active`,

@@ -28,10 +28,11 @@ async def get_active_recommendations(
             pass
 
     # Determine preferences logic: User profile > Query params
+    prefs = user.preferences if user and user.preferences else None
     params = {
-        "risk": user.preferences.risk_tolerance if user else risk,
-        "horizon": user.preferences.investment_horizon if user else horizon,
-        "sectors": ",".join(user.preferences.preferred_sectors) if user else sectors
+        "risk": prefs.risk_tolerance if prefs else risk,
+        "horizon": prefs.investment_horizon if prefs else horizon,
+        "sectors": ",".join(prefs.preferred_sectors) if prefs and prefs.preferred_sectors else sectors
     }
     
     async with httpx.AsyncClient() as client:

@@ -2250,7 +2250,7 @@
     "vix_multiplier": 1.0,
     "id": "HCLTECH_1770950238",
     "created_at": "2026-02-13T02:37:18.653530",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T06:37:18.653532"
   },
   "SUNPHARMA_1770950240": {
@@ -2411,7 +2411,7 @@
     "vix_multiplier": 1.0,
     "id": "ASIANPAINT_1770950251",
     "created_at": "2026-02-13T02:37:31.512997",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T06:37:31.513000"
   },
   "ULTRACEMCO_1770950252": {
@@ -4437,5 +4437,212 @@
     "created_at": "2026-02-13T09:53:11.564492",
     "status": "active",
     "expires_at": "2026-02-13T13:53:11.564496"
+  },
+  "HCLTECH_1771048298": {
+    "symbol": "HCLTECH",
+    "direction": "UP",
+    "conviction": 23.3,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 23% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+9.6% bullish contribution). Key Indicators: RSI is 14.1 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 7.2% YoY. Net Margin: 12.8%.\n\n**Fundamental Analysis**\n- Metrics: PE 23.91749330267177 (Sector 24.793939933413867), PB 5.650766541634205\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company is almost debt free.; Stock is providing a good dividend yield of 3.71%.\n- Weaknesses: Stock is trading at 12.7 times its book value; The company has delivered a poor sales growth of 9.36% over past five years.\n- Efficiency: ROCE 43.1%, ROE 32.6%\n",
+    "score_breakdown": {
+      "Sentiment": 9.6,
+      "Technical": 3.3,
+      "AI Model": 5.4,
+      "Fundamental": 5.3,
+      "Analyst": 0.0
+    },
+    "entry": 1455.2,
+    "target1": 1558.1,
+    "target2": 1609.55,
+    "sl": 1403.75,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "HCLTECH_1771048298",
+    "created_at": "2026-02-14T05:51:38.045138",
+    "status": "active",
+    "expires_at": "2026-02-14T09:51:38.045156"
+  },
+  "ADANIENT_1771048304": {
+    "symbol": "ADANIENT",
+    "direction": "DOWN",
+    "conviction": 18.98,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 19% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (-9.6% bearish contribution). Key Indicators: RSI is 73.4 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.0% YoY. Net Margin: 12.1%.\n\n**Fundamental Analysis**\n- Metrics: PE 20.17978251432479 (Sector 42.14838861959978), PB 4.790324865216232\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 41.2% CAGR over last 5 years\n- Weaknesses: Stock is trading at 8.83 times its book value; The company has delivered a poor sales growth of 10.6% over past five years.\n- Efficiency: ROCE 12.9%, ROE 12.1%\n",
+    "score_breakdown": {
+      "Sentiment": -9.6,
+      "Technical": -2.0,
+      "AI Model": -4.8,
+      "Fundamental": -2.9,
+      "Analyst": 0.0
+    },
+    "entry": 2136.6,
+    "target1": 1990.83,
+    "target2": 1917.94,
+    "sl": 2209.49,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ADANIENT_1771048304",
+    "created_at": "2026-02-14T05:51:44.241583",
+    "status": "active",
+    "expires_at": "2026-02-14T09:51:44.241585"
+  },
+  "ASIANPAINT_1771048318": {
+    "symbol": "ASIANPAINT",
+    "direction": "UP",
+    "conviction": 23.1,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 23% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+9.6% bullish contribution). Key Indicators: RSI is 18.3 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 2.6% YoY. Net Margin: 10.8%.\n\n**Fundamental Analysis**\n- Metrics: PE 58.99103264239501 (Sector 29.378847537941873), PB 11.308698930495712\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company is almost debt free.; Company has a good return on equity (ROE) track record: 3 Years ROE 26.5%\n- Weaknesses: Stock is trading at 11.9 times its book value; The company has delivered a poor sales growth of 11.4% over past five years.\n- Efficiency: ROCE 27.3%, ROE 20.7%\n",
+    "score_breakdown": {
+      "Sentiment": 9.6,
+      "Technical": 5.2,
+      "AI Model": 5.2,
+      "Fundamental": 3.4,
+      "Analyst": 0.0
+    },
+    "entry": 2366.4,
+    "target1": 2514.93,
+    "target2": 2589.19,
+    "sl": 2292.14,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ASIANPAINT_1771048318",
+    "created_at": "2026-02-14T05:51:58.463829",
+    "status": "active",
+    "expires_at": "2026-02-14T09:51:58.463837"
+  },
+  "M&M_1771048330": {
+    "symbol": "M&M",
+    "direction": "UP",
+    "conviction": 28.04,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 28% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+22.0% bullish contribution). Key Indicators: RSI is 49.3 (Neutral). Sentiment Analysis: Moneycontrol Analyst (Positive).\n\n**Fundamental Analysis**\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: Promoter holding is low: 18.4%\n- Efficiency: ROCE 27.0%, ROE 20.8%\n",
+    "score_breakdown": {
+      "Sentiment": 22.0,
+      "Technical": 0.6,
+      "AI Model": 0.5,
+      "Fundamental": 5.3,
+      "Analyst": 0.0
+    },
+    "entry": 3533.4,
+    "target1": 3765.16,
+    "target2": 3881.04,
+    "sl": 3417.52,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "M&M_1771048330",
+    "created_at": "2026-02-14T05:52:10.875726",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:10.875734"
+  },
+  "TATASTEEL_1771048332": {
+    "symbol": "TATASTEEL",
+    "direction": "UP",
+    "conviction": 24.15,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 24% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+22.0% bullish contribution). Key Indicators: RSI is 64.1 (Neutral). Sentiment Analysis: Moneycontrol Analyst (Positive). Revenue Growth: 3.0% YoY. Net Margin: 4.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 27.663000723097493 (Sector 29.378847537941873), PB 2.776493434026178\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has been maintaining a healthy dividend payout of 30.3%\n- Weaknesses: Company has a low return on equity of 11.7% over last 3 years.\n- Efficiency: ROCE 12.7%, ROE 10.9%\n",
+    "score_breakdown": {
+      "Sentiment": 22.0,
+      "Technical": -0.3,
+      "AI Model": 2.8,
+      "Fundamental": 0.0,
+      "Analyst": 0.0
+    },
+    "entry": 203.18,
+    "target1": 217.18,
+    "target2": 224.18,
+    "sl": 196.18,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "TATASTEEL_1771048332",
+    "created_at": "2026-02-14T05:52:12.646711",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:12.646714"
+  },
+  "ADANIPORTS_1771048334": {
+    "symbol": "ADANIPORTS",
+    "direction": "DOWN",
+    "conviction": 19.67,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 20% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (-9.6% bearish contribution). Key Indicators: RSI is 78.6 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 18.6% YoY. Net Margin: 32.4%.\n\n**Fundamental Analysis**\n- Metrics: PE 28.016829643444705 (Sector 42.14838861959978), PB 5.374029017617814\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Promoter holding has increased by 2.13% over last quarter.\n- Weaknesses: Stock is trading at 11.7 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 8.85%, ROE 9.73%\n",
+    "score_breakdown": {
+      "Sentiment": -9.6,
+      "Technical": -3.9,
+      "AI Model": -3.5,
+      "Fundamental": -2.9,
+      "Analyst": 0.0
+    },
+    "entry": 1519.0,
+    "target1": 1424.64,
+    "target2": 1377.46,
+    "sl": 1566.18,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ADANIPORTS_1771048334",
+    "created_at": "2026-02-14T05:52:14.772443",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:14.772446"
+  },
+  "SBILIFE_1771048340": {
+    "symbol": "SBILIFE",
+    "direction": "UP",
+    "conviction": 22.12,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 22% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+22.0% bullish contribution). Key Indicators: RSI is 56.2 (Neutral). Sentiment Analysis: Moneycontrol Analyst (Positive). Revenue Growth: 13.5% YoY. Net Margin: 1.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 82.28251969214391 (Sector 18.363726418927005), PB 12.010093736423464\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company is almost debt free.; Company is expected to give good quarter\n- Weaknesses: Stock is trading at 10.7 times its book value; Tax rate seems low\n- Efficiency: ROCE 16.9%, ROE 15.1%\n",
+    "score_breakdown": {
+      "Sentiment": 22.0,
+      "Technical": -0.3,
+      "AI Model": 0.2,
+      "Fundamental": 0.5,
+      "Analyst": 0.0
+    },
+    "entry": 2034.2,
+    "target1": 2133.06,
+    "target2": 2182.49,
+    "sl": 1984.77,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "SBILIFE_1771048340",
+    "created_at": "2026-02-14T05:52:20.396737",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:20.396743"
+  },
+  "ADANIGREEN_1771048343": {
+    "symbol": "ADANIGREEN",
+    "direction": "DOWN",
+    "conviction": 16.05,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 16% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (-9.6% bearish contribution). Key Indicators: RSI is 78.6 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.0% YoY. Net Margin: 11.1%.\n\n**Fundamental Analysis**\n- Metrics: PE 105.43036601531986 (Sector 21.874432028153194), PB 6.935901011507112\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company has delivered good profit growth of 40.7% CAGR over last 5 years\n- Weaknesses: Stock is trading at 10.6 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 8.87%, ROE 9.41%\n",
+    "score_breakdown": {
+      "Sentiment": -9.6,
+      "Technical": -2.4,
+      "AI Model": -2.4,
+      "Fundamental": -1.9,
+      "Analyst": 0.0
+    },
+    "entry": 950.5,
+    "target1": 871.56,
+    "target2": 832.09,
+    "sl": 989.97,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ADANIGREEN_1771048343",
+    "created_at": "2026-02-14T05:52:23.689935",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:23.689938"
+  },
+  "BHEL_1771048362": {
+    "symbol": "BHEL",
+    "direction": "UP",
+    "conviction": 16.84,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.13%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 17% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (+22.0% bullish contribution). Key Indicators: RSI is 58.8 (Neutral). Sentiment Analysis: 5paisa (Buy, Tgt 270.0). Revenue Growth: 8.2% YoY. Net Margin: 2.6%.\n\n**Fundamental Analysis**\n- Metrics: PE 109.37041941457679 (Sector 42.14838861959978), PB 3.6021840447649\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability Avg, Entry Avg\n- Strengths: Company has been maintaining a healthy dividend payout of 29.9%\n- Weaknesses: Stock is trading at 3.59 times its book value; The company has delivered a poor sales growth of 5.72% over past five years.\n- Efficiency: ROCE 4.75%, ROE 2.0%\n",
+    "score_breakdown": {
+      "Sentiment": 22.0,
+      "Technical": 0.3,
+      "AI Model": -1.3,
+      "Fundamental": -3.8,
+      "Analyst": 0.0
+    },
+    "entry": 255.75,
+    "target1": 274.1,
+    "target2": 283.27,
+    "sl": 246.58,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "BHEL_1771048362",
+    "created_at": "2026-02-14T05:52:42.403582",
+    "status": "active",
+    "expires_at": "2026-02-14T09:52:42.403595"
   }
 }

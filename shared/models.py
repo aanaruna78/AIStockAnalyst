@@ -57,14 +57,17 @@ class UserPreferences(BaseModel):
 class UserProfile(BaseModel):
     full_name: str
     email: str
+    picture: Optional[str] = None
     is_active: bool = True
     is_admin: bool = False
     preferences: UserPreferences = UserPreferences()
+    onboarded: bool = False
 
 class User(UserProfile):
     id: str
     hashed_password: Optional[str] = None
     google_id: Optional[str] = None
+    login_history: List[dict] = []
 
 class UserCreate(BaseModel):
     email: str
