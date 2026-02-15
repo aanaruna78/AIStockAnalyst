@@ -11,6 +11,7 @@ from shared.models import (
 from shared.config import settings
 from auth_utils import get_password_hash, verify_password, create_access_token, decode_access_token
 from email_utils import generate_otp, send_otp_email
+from user_store import user_store
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import uuid
@@ -43,8 +44,8 @@ def validate_password(password: str) -> list[str]:
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
 
-# ─── In-memory stores ────────────────────────────────────────────
-users_db: dict[str, User] = {}
+# ─── Stores ──────────────────────────────────────────────────────
+# users_db is now backed by user_store (JSON file persistence)
 pending_users: dict[str, PendingUser] = {}  # email -> PendingUser (awaiting OTP)
 
 async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
@@ -58,9 +59,13 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     email = payload.get("sub")
-    user = users_db.get(email)
+    user = user_store.get(email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User session expired. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 async def require_admin(user: User = Depends(get_current_user)):
@@ -79,7 +84,7 @@ async def register(body: UserRegister):
     email = body.email.strip().lower()
 
     # Already a verified user?
-    if email in users_db:
+    if user_store.exists(email):
         raise HTTPException(status_code=400, detail="Email already registered. Please login.")
 
     # Password match
@@ -152,7 +157,7 @@ async def verify_otp(body: OTPVerifyRequest, request: Request):
         is_admin=email in ADMIN_EMAILS,
         login_history=[login_entry],
     )
-    users_db[email] = user
+    user_store.save(user)
     del pending_users[email]
 
     access_token = create_access_token(data={"sub": email})
@@ -219,7 +224,7 @@ async def password_rules():
 async def login(body: LoginRequest, request: Request):
     """Login with email and password."""
     email = body.email.strip().lower()
-    user = users_db.get(email)
+    user = user_store.get(email)
     if not user or not user.hashed_password:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not verify_password(body.password, user.hashed_password):
@@ -232,6 +237,7 @@ async def login(body: LoginRequest, request: Request):
     }
     user.login_history.append(login_entry)
     user.login_history = user.login_history[-50:]
+    user_store.save(user)  # persist login history
 
     access_token = create_access_token(data={"sub": user.email})
     return {
@@ -252,7 +258,7 @@ async def login(body: LoginRequest, request: Request):
 
 @router.post("/signup", response_model=UserProfile)
 async def signup(user_in: UserCreate):
-    if user_in.email in users_db:
+    if user_store.exists(user_in.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_password = get_password_hash(user_in.password)
     user_id = str(uuid.uuid4())
@@ -262,7 +268,7 @@ async def signup(user_in: UserCreate):
         full_name=user_in.full_name,
         hashed_password=hashed_password,
     )
-    users_db[user_in.email] = user
+    user_store.save(user)
     return user
 
 
@@ -293,7 +299,7 @@ async def google_login(request_body: GoogleLoginRequest, request: Request):
         }
 
         # Check if user exists
-        user = next((u for u in users_db.values() if u.google_id == google_id or u.email == email), None)
+        user = user_store.find_by_email_or_google(email, google_id)
         
         if not user:
             # Create new user for Google login
@@ -307,7 +313,6 @@ async def google_login(request_body: GoogleLoginRequest, request: Request):
                 is_admin=email in ADMIN_EMAILS,
                 login_history=[login_entry]
             )
-            users_db[email] = user
         else:
             if not user.google_id:
                 user.google_id = google_id
@@ -316,6 +321,7 @@ async def google_login(request_body: GoogleLoginRequest, request: Request):
             user.login_history.append(login_entry)
             # Keep only last 50 logins
             user.login_history = user.login_history[-50:]
+        user_store.save(user)
 
         # Generate access token
         access_token = create_access_token(data={"sub": user.email})
@@ -347,6 +353,7 @@ async def update_preferences(prefs: UserPreferences, user: User = Depends(get_cu
         raise HTTPException(status_code=401, detail="Not authenticated")
     user.preferences = prefs
     user.onboarded = True
+    user_store.save(user)  # persist preferences
     return {"status": "success", "preferences": user.preferences}
 
 @router.get("/me", response_model=UserProfile)
@@ -367,7 +374,7 @@ async def get_login_history(user: User = Depends(get_current_user)):
 async def admin_list_users(admin: User = Depends(require_admin)):
     """List all registered users (admin only)."""
     users = []
-    for u in users_db.values():
+    for u in user_store.all():
         users.append({
             "id": u.id,
             "email": u.email,
@@ -385,7 +392,7 @@ async def admin_list_users(admin: User = Depends(require_admin)):
 @router.get("/admin/users/{user_email}/audit")
 async def admin_user_audit(user_email: str, admin: User = Depends(require_admin)):
     """Get full audit log for a specific user (admin only)."""
-    target = users_db.get(user_email)
+    target = user_store.get(user_email)
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     return {

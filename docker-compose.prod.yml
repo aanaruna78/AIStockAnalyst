@@ -1,7 +1,8 @@
 services:
   api-gateway:
     restart: unless-stopped
-    volumes: []
+    volumes:
+      - api_gateway_data:/app/data
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
   frontend:
@@ -58,3 +59,6 @@ services:
     restart: unless-stopped
     volumes: []
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
+volumes:
+  api_gateway_data:

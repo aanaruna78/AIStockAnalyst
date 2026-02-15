@@ -6,6 +6,7 @@ services:
     volumes:
       - ./services/api_gateway:/app
       - ./shared:/app/shared
+      - api_gateway_data:/app/data
     environment:
       - ENV=development
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
@@ -267,3 +268,6 @@ services:
       retries: 3
       start_period: 10s
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  api_gateway_data:
