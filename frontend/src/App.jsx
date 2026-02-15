@@ -9,6 +9,8 @@ import '@fontsource/outfit';
 
 import Dashboard from './pages/DashboardNew';
 import Onboarding from './pages/Onboarding';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import RecommendationDetail from './pages/RecommendationDetailNew';
 import Watchlist from './pages/WatchlistNew';
 import Alerts from './pages/AlertsNew';
@@ -25,7 +27,7 @@ const RequireAuth = ({ children }) => {
     const location = useLocation();
 
     if (loading) return null; // or a loading spinner
-    if (!user) return <Navigate to="/onboarding" state={{ from: location }} replace />;
+    if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
     return children;
 };
 
@@ -73,6 +75,8 @@ function App() {
           <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
             <Header />
             <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
               <Route path="/recommendation/:id" element={<RequireAuth><RecommendationDetail /></RequireAuth>} />

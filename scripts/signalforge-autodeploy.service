@@ -1,0 +1,17 @@
+[Unit]
+Description=SignalForge Auto-Deploy Watcher
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AIStockAnalyst
+ExecStart=/bin/bash /root/AIStockAnalyst/scripts/auto_deploy.sh
+Restart=always
+RestartSec=30
+Environment=GIT_BRANCH=main
+Environment=DEPLOY_INTERVAL=120
+
+[Install]
+WantedBy=multi-user.target

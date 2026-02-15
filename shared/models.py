@@ -74,6 +74,33 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
 
+class UserRegister(BaseModel):
+    """Registration request with password confirmation."""
+    email: str
+    password: str
+    confirm_password: str
+    full_name: str
+
+class OTPVerifyRequest(BaseModel):
+    email: str
+    otp: str
+
+class OTPResendRequest(BaseModel):
+    email: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class PendingUser(BaseModel):
+    """User awaiting OTP verification."""
+    email: str
+    full_name: str
+    hashed_password: str
+    otp: str
+    otp_created_at: datetime = datetime.now()
+    last_resend_at: datetime = datetime.now()
+
 # EPIC 3: Paper Trading Models
 class TradeStatus(str, Enum):
     OPEN = "OPEN"

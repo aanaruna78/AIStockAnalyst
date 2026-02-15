@@ -19,6 +19,15 @@ class GlobalConfig(BaseSettings):
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
 
+    # Email / OTP Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = "aanaruna@gmail.com"
+    SMTP_PASSWORD: str = ""  # set via .env
+    SMTP_FROM_NAME: str = "SignalForge"
+    OTP_EXPIRE_MINUTES: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 30
+
     # Recommendation Thresholds (Control Section)
     MIN_CONFIDENCE_SCORE: float = 0.15  # 15% directional conviction (bidirectional: distance from neutral)
     MAX_TRADES_PER_DAY: int = 5

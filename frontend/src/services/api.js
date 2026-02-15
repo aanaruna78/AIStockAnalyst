@@ -21,7 +21,7 @@ api.interceptors.response.use(
     (err) => {
         if (err.response?.status === 401) {
             localStorage.removeItem('token');
-            window.location.href = '/onboarding';
+            window.location.href = '/login';
         }
         return Promise.reject(err);
     }
@@ -140,6 +140,36 @@ export const fetchUser = async () => {
 
 export const loginUser = async (credential) => {
     const { data } = await api.post('/auth/login', { token: credential });
+    return data;
+};
+
+export const loginWithEmail = async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password });
+    return data;
+};
+
+export const registerUser = async (email, password, confirmPassword, fullName) => {
+    const { data } = await api.post('/auth/register', {
+        email,
+        password,
+        confirm_password: confirmPassword,
+        full_name: fullName,
+    });
+    return data;
+};
+
+export const verifyOtp = async (email, otp) => {
+    const { data } = await api.post('/auth/verify-otp', { email, otp });
+    return data;
+};
+
+export const resendOtp = async (email) => {
+    const { data } = await api.post('/auth/resend-otp', { email });
+    return data;
+};
+
+export const getPasswordRules = async () => {
+    const { data } = await api.get('/auth/password-rules');
     return data;
 };
 

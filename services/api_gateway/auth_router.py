@@ -1,19 +1,51 @@
 from typing import Optional
+import re
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-from shared.models import User, UserCreate, UserProfile, UserPreferences
+from shared.models import (
+    User, UserCreate, UserProfile, UserPreferences,
+    UserRegister, OTPVerifyRequest, OTPResendRequest, LoginRequest, PendingUser,
+)
 from shared.config import settings
 from auth_utils import get_password_hash, verify_password, create_access_token, decode_access_token
+from email_utils import generate_otp, send_otp_email
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+
+logger = logging.getLogger("auth")
 
 ADMIN_EMAILS = {"aanaruna@gmail.com"}
 
+# ─── Password policy (moderate) ──────────────────────────────────
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_RULES = [
+    (r"[A-Z]", "at least one uppercase letter"),
+    (r"[a-z]", "at least one lowercase letter"),
+    (r"[0-9]", "at least one digit"),
+    (r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?]", "at least one special character"),
+]
+
+def validate_password(password: str) -> list[str]:
+    """Return list of validation error messages (empty = valid)."""
+    errors = []
+    if len(password) < PASSWORD_MIN_LENGTH:
+        errors.append(f"Password must be at least {PASSWORD_MIN_LENGTH} characters")
+    for pattern, msg in PASSWORD_RULES:
+        if not re.search(pattern, password):
+            errors.append(f"Password must contain {msg}")
+    return errors
+
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
+
+# ─── In-memory stores ────────────────────────────────────────────
+users_db: dict[str, User] = {}
+pending_users: dict[str, PendingUser] = {}  # email -> PendingUser (awaiting OTP)
 
 async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     if not token:
@@ -38,38 +70,203 @@ async def require_admin(user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
-# In-memory user store for initial local dev
-# In production, this would be a database (PostgreSQL)
-users_db = {}
+
+# ─── Registration with OTP ───────────────────────────────────────
+
+@router.post("/register")
+async def register(body: UserRegister):
+    """Register a new user — sends OTP to email for verification."""
+    email = body.email.strip().lower()
+
+    # Already a verified user?
+    if email in users_db:
+        raise HTTPException(status_code=400, detail="Email already registered. Please login.")
+
+    # Password match
+    if body.password != body.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+
+    # Password strength
+    pwd_errors = validate_password(body.password)
+    if pwd_errors:
+        raise HTTPException(status_code=400, detail=pwd_errors)
+
+    # Generate OTP & store pending
+    otp = generate_otp()
+    now = datetime.utcnow()
+    pending_users[email] = PendingUser(
+        email=email,
+        full_name=body.full_name.strip(),
+        hashed_password=get_password_hash(body.password),
+        otp=otp,
+        otp_created_at=now,
+        last_resend_at=now,
+    )
+
+    # Send email (non-blocking best-effort)
+    sent = send_otp_email(email, otp, body.full_name)
+    if not sent:
+        logger.warning(f"OTP email dispatch failed for {email}, OTP still stored")
+
+    response = {
+        "status": "otp_sent",
+        "message": f"Verification code sent to {email}",
+        "resend_cooldown_seconds": settings.OTP_RESEND_COOLDOWN_SECONDS,
+    }
+    # DEV MODE: include OTP in response so it can be shown on-screen
+    if settings.ENVIRONMENT == "development":
+        response["dev_otp"] = otp
+    return response
+
+
+@router.post("/verify-otp")
+async def verify_otp(body: OTPVerifyRequest, request: Request):
+    """Verify OTP and finalize registration."""
+    email = body.email.strip().lower()
+    pending = pending_users.get(email)
+
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending registration for this email. Please register first.")
+
+    # Check expiry
+    elapsed = (datetime.utcnow() - pending.otp_created_at).total_seconds()
+    if elapsed > settings.OTP_EXPIRE_MINUTES * 60:
+        del pending_users[email]
+        raise HTTPException(status_code=400, detail="OTP expired. Please register again.")
+
+    if pending.otp != body.otp.strip():
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # Create the real user
+    user_id = str(uuid.uuid4())
+    login_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "ip": request.client.host if request.client else "unknown",
+        "method": "email",
+    }
+    user = User(
+        id=user_id,
+        email=email,
+        full_name=pending.full_name,
+        hashed_password=pending.hashed_password,
+        is_admin=email in ADMIN_EMAILS,
+        login_history=[login_entry],
+    )
+    users_db[email] = user
+    del pending_users[email]
+
+    access_token = create_access_token(data={"sub": email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "full_name": user.full_name,
+            "email": user.email,
+            "picture": user.picture,
+            "is_admin": user.is_admin,
+            "onboarded": user.onboarded,
+            "preferences": user.preferences.model_dump() if user.preferences else {},
+        },
+    }
+
+
+@router.post("/resend-otp")
+async def resend_otp(body: OTPResendRequest):
+    """Resend OTP with 30-second cooldown."""
+    email = body.email.strip().lower()
+    pending = pending_users.get(email)
+
+    if not pending:
+        raise HTTPException(status_code=400, detail="No pending registration for this email.")
+
+    # Cooldown check
+    since_last = (datetime.utcnow() - pending.last_resend_at).total_seconds()
+    if since_last < settings.OTP_RESEND_COOLDOWN_SECONDS:
+        remaining = int(settings.OTP_RESEND_COOLDOWN_SECONDS - since_last)
+        raise HTTPException(status_code=429, detail=f"Please wait {remaining} seconds before resending.")
+
+    # New OTP
+    otp = generate_otp()
+    pending.otp = otp
+    pending.otp_created_at = datetime.utcnow()
+    pending.last_resend_at = datetime.utcnow()
+
+    send_otp_email(email, otp, pending.full_name)
+    response = {
+        "status": "otp_sent",
+        "message": f"New verification code sent to {email}",
+        "resend_cooldown_seconds": settings.OTP_RESEND_COOLDOWN_SECONDS,
+    }
+    # DEV MODE: include OTP in response so it can be shown on-screen
+    if settings.ENVIRONMENT == "development":
+        response["dev_otp"] = otp
+    return response
+
+
+# ─── Password rules (public, for frontend display) ──────────────
+
+@router.get("/password-rules")
+async def password_rules():
+    return {
+        "min_length": PASSWORD_MIN_LENGTH,
+        "rules": [msg for _, msg in PASSWORD_RULES],
+    }
+
+
+# ─── Email/Password Login ────────────────────────────────────────
+
+@router.post("/login")
+async def login(body: LoginRequest, request: Request):
+    """Login with email and password."""
+    email = body.email.strip().lower()
+    user = users_db.get(email)
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    login_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "ip": request.client.host if request.client else "unknown",
+        "method": "email",
+    }
+    user.login_history.append(login_entry)
+    user.login_history = user.login_history[-50:]
+
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "full_name": user.full_name,
+            "email": user.email,
+            "picture": user.picture,
+            "is_admin": user.is_admin,
+            "onboarded": user.onboarded,
+            "preferences": user.preferences.model_dump() if user.preferences else {},
+        },
+    }
+
+
+# ─── Legacy signup (kept for backward compat) ────────────────────
 
 @router.post("/signup", response_model=UserProfile)
 async def signup(user_in: UserCreate):
     if user_in.email in users_db:
         raise HTTPException(status_code=400, detail="Email already registered")
-    
     hashed_password = get_password_hash(user_in.password)
     user_id = str(uuid.uuid4())
     user = User(
         id=user_id,
         email=user_in.email,
         full_name=user_in.full_name,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
     )
     users_db[user_in.email] = user
     return user
 
-@router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = users_db.get(form_data.username)
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    access_token = create_access_token(data={"sub": user.email})
-    return {"access_token": access_token, "token_type": "bearer"}
+
+# ─── Google SSO Login ─────────────────────────────────────────────
 
 class GoogleLoginRequest(BaseModel):
     token: str

@@ -9,6 +9,7 @@ services:
     environment:
       - ENV=development
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
       # Docker-internal service URLs (override localhost defaults)
       - INGESTION_SERVICE_URL=http://ingestion-service:8000
       - INGESTION_WS_URL=ws://ingestion-service:8000

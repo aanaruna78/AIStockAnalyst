@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Stepper, Step, StepLabel, Button, Typography,
     RadioGroup, FormControlLabel, Radio,
-    Card, CardContent, Container, Chip, Stack, Divider, CircularProgress
+    Card, CardContent, Container, Chip, Stack, CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { config } from '../config';
 import axios from 'axios';
@@ -13,7 +12,7 @@ import axios from 'axios';
 const PREFERENCE_STEPS = ['Risk Profile', 'Investment Horizon', 'Market Preferences'];
 
 const Onboarding = () => {
-    const { user, login, loading: authLoading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [activeStep, setActiveStep] = useState(0);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
@@ -30,35 +29,12 @@ const Onboarding = () => {
         }
     }, [user, authLoading, navigate]);
 
-    const handleGoogleSuccess = async (credentialResponse) => {
-        try {
-            const response = await axios.post(`${config.API_BASE_URL}/auth/google`, {
-                token: credentialResponse.credential
-            });
-
-            const { access_token, user: userData } = response.data;
-            if (access_token) {
-                login(access_token, userData);
-
-                // If user already has preferences saved, skip onboarding
-                if (userData?.onboarded) {
-                    if (userData.preferences) {
-                        localStorage.setItem('user_preferences', JSON.stringify({
-                            risk: userData.preferences.risk_tolerance || 'medium',
-                            horizon: userData.preferences.investment_horizon || 'swing',
-                            sectors: userData.preferences.preferred_sectors || []
-                        }));
-                    }
-                    navigate('/', { replace: true });
-                    return;
-                }
-                setActiveStep(0);
-            }
-        } catch (error) {
-            console.error('Google Login Error:', error);
-            alert('Authentication failed. Please try again.');
+    // Redirect unauthenticated users to login
+    useEffect(() => {
+        if (!authLoading && !user) {
+            navigate('/login', { replace: true });
         }
-    };
+    }, [user, authLoading, navigate]);
 
     const handleNext = async () => {
         if (activeStep === PREFERENCE_STEPS.length - 1) {
@@ -97,64 +73,8 @@ const Onboarding = () => {
         }));
     };
 
-    // Show login page if not authenticated
-    if (!user) {
-        return (
-            <Container maxWidth="sm" sx={{ py: 8 }}>
-                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                    <Box sx={{
-                        p: 4, textAlign: 'center',
-                        background: 'linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(129,140,248,0.08) 100%)'
-                    }}>
-                        <Typography variant="h3" fontWeight={900} sx={{ letterSpacing: '-0.03em', mb: 1 }}>
-                            SignalForge
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-                            AI-Powered Stock Trading Signals
-                        </Typography>
-                    </Box>
-                    <CardContent sx={{ p: 4 }}>
-                        <Typography variant="h6" align="center" sx={{ mb: 1 }}>
-                            Sign in to get started
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 4 }}>
-                            Access real-time market signals, AI analysis, and portfolio tracking
-                        </Typography>
-
-                        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                            <GoogleLogin
-                                onSuccess={handleGoogleSuccess}
-                                onError={() => console.log('Login Failed')}
-                                useOneTap
-                                theme="filled_blue"
-                                shape="pill"
-                                size="large"
-                                width={300}
-                            />
-                        </Box>
-
-                        <Divider sx={{ my: 3 }}>
-                            <Typography variant="caption" color="text.secondary">FEATURES</Typography>
-                        </Divider>
-
-                        <Stack spacing={1.5}>
-                            {[
-                                'Real-time AI-powered buy/sell signals',
-                                'Multi-source market data analysis',
-                                'Paper trading & portfolio tracking',
-                                'Personalized risk-based recommendations'
-                            ].map((feature) => (
-                                <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', flexShrink: 0 }} />
-                                    <Typography variant="body2" color="text.secondary">{feature}</Typography>
-                                </Box>
-                            ))}
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Container>
-        );
-    }
+    // Redirect unauthenticated to login
+    if (!user) return null;
 
     // Show preference steps for new (not-yet-onboarded) users
     return (

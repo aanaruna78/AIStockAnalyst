@@ -22,6 +22,10 @@ export const config = {
     endpoints: {
         auth: {
             login: `${API_BASE_URL}/auth/login`,
+            register: `${API_BASE_URL}/auth/register`,
+            verifyOtp: `${API_BASE_URL}/auth/verify-otp`,
+            resendOtp: `${API_BASE_URL}/auth/resend-otp`,
+            passwordRules: `${API_BASE_URL}/auth/password-rules`,
             me: `${API_BASE_URL}/auth/me`,
             signup: `${API_BASE_URL}/auth/signup`,
             google: `${API_BASE_URL}/auth/google`,
