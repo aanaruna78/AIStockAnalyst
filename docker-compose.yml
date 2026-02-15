@@ -271,3 +271,4 @@ services:
 
 volumes:
   api_gateway_data:
+  trading_data:

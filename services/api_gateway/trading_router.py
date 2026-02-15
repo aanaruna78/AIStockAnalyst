@@ -42,3 +42,13 @@ async def close_trade(trade_id: str, price: float):
             return resp.json()
         except httpx.RequestError:
              raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+@router.post("/portfolio/reset")
+async def reset_portfolio():
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(f"{TRADING_SERVICE_URL}/portfolio/reset")
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")

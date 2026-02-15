@@ -7,3 +7,4 @@ apscheduler
 yfinance
 pandas
 requests
+pytz

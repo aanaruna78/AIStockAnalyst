@@ -9,12 +9,14 @@ import uuid
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from shared.models import Trade, TradeType, TradeStatus, Portfolio
 
-# Robust path for data file inside the project
+# Robust path for data file — prefer env var, then /app/data (Docker), then local fallback
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.environ.get(
     "PAPER_TRADES_FILE",
-    os.path.join(BASE_DIR, "../../data/paper_trades.json")
+    os.path.join(BASE_DIR, "data", "paper_trades.json")
 )
+
+INITIAL_CAPITAL = 100000.0  # ₹1,00,000 starting capital for paper trading
 
 class TradeManager:
     def __init__(self):

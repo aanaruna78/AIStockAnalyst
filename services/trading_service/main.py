@@ -283,6 +283,19 @@ async def execute_signals():
             print(f"[TradingService] Error executing signals: {e}")
             return {"status": "error", "detail": str(e)}
 
+@app.post("/portfolio/reset")
+async def reset_portfolio():
+    """Reset portfolio to initial state (₹1,00,000 fresh start)."""
+    from trade_manager import INITIAL_CAPITAL
+    trade_manager.portfolio.cash_balance = INITIAL_CAPITAL
+    trade_manager.portfolio.realized_pnl = 0.0
+    trade_manager.portfolio.active_trades = []
+    trade_manager.portfolio.trade_history = []
+    trade_manager.portfolio.last_updated = datetime.now()
+    trade_manager.save_state()
+    print(f"[TradingService] ♻️ Portfolio RESET to ₹{INITIAL_CAPITAL:,.0f}")
+    return {"status": "reset", "cash_balance": INITIAL_CAPITAL}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

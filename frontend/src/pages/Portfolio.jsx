@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Container, Card, CardContent,
     Button, Stack, Grid, Divider, Chip, Table, TableBody,
-    TableCell, TableContainer, TableHead, TableRow, Paper, Alert
+    TableCell, TableContainer, TableHead, TableRow, Paper, Alert,
+    Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText
 } from '@mui/material';
-import { Wallet, Briefcase, TrendingUp, TrendingDown, RefreshCw, History } from 'lucide-react';
+import { Wallet, Briefcase, TrendingUp, TrendingDown, RefreshCw, History, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 import { config } from '../config';
 
@@ -13,6 +14,8 @@ const Portfolio = () => {
     const [portfolio, setPortfolio] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const fetchPortfolio = async () => {
         try {
@@ -50,6 +53,24 @@ const Portfolio = () => {
         const interval = setInterval(fetchPortfolio, 5000);
         return () => clearInterval(interval);
     }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleResetPortfolio = async () => {
+        setResetting(true);
+        try {
+            const token = localStorage.getItem('token');
+            let authHeaders = {};
+            if (token) authHeaders['Authorization'] = 'Bearer ' + token;
+            await axios.post(`${config.API_BASE_URL}/trading/portfolio/reset`, {}, { headers: authHeaders });
+            await fetchPortfolio();
+            setResetDialogOpen(false);
+            setError(null);
+        } catch (err) {
+            console.error('Reset failed:', err);
+            setError('Failed to reset portfolio');
+        } finally {
+            setResetting(false);
+        }
+    };
 
     if (loading && !portfolio) {
         return (
@@ -93,15 +114,25 @@ const Portfolio = () => {
                     </Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right' }}>
-                    <Button
-                        startIcon={<RefreshCw size={16} />}
-                        onClick={fetchPortfolio}
-                        variant="outlined"
-                        size="small"
-                        sx={{ mb: 1 }}
-                    >
-                        Refresh
-                    </Button>
+                    <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mb: 1 }}>
+                        <Button
+                            startIcon={<RefreshCw size={16} />}
+                            onClick={fetchPortfolio}
+                            variant="outlined"
+                            size="small"
+                        >
+                            Refresh
+                        </Button>
+                        <Button
+                            startIcon={<RotateCcw size={16} />}
+                            onClick={() => setResetDialogOpen(true)}
+                            variant="outlined"
+                            size="small"
+                            color="warning"
+                        >
+                            Reset
+                        </Button>
+                    </Stack>
                     <Typography variant="caption" color="text.secondary" display="block">Current Balance</Typography>
                     <Typography variant="h4" fontWeight={800} color="primary.main">
                         ₹{portfolio.cash_balance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -292,6 +323,22 @@ const Portfolio = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* Reset Confirmation Dialog */}
+            <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)}>
+                <DialogTitle>Reset Portfolio</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        This will reset your paper trading portfolio to ₹1,00,000 and clear all active trades and trade history. This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setResetDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleResetPortfolio} color="warning" variant="contained" disabled={resetting}>
+                        {resetting ? 'Resetting...' : 'Reset Portfolio'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 };
