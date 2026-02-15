@@ -42,9 +42,15 @@ async def get_active_recommendations(
 
 @router.post("/generate")
 async def trigger_recommendation(data: dict):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(f"{REC_ENGINE_URL}/generate", json=data)
-        return response.json()
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=10.0)) as client:
+            response = await client.post(f"{REC_ENGINE_URL}/generate", json=data)
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail="Recommendation engine temporarily unavailable")
 
 @router.websocket("/ws")
 async def websocket_recommendations(websocket: WebSocket):
