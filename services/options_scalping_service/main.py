@@ -26,7 +26,6 @@ import logging
 import re
 import requests
 import numpy as np
-import math
 
 app = FastAPI(title="SignalForge Options Scalping Service")
 logging.basicConfig(level=logging.INFO)
