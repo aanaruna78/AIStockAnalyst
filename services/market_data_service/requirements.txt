@@ -6,3 +6,4 @@ numpy
 ta-lib
 yfinance
 pydantic-settings
+requests
