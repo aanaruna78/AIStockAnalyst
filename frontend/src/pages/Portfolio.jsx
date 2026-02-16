@@ -4,11 +4,13 @@ import {
     Box, Typography, Container, Card, CardContent,
     Button, Stack, Grid, Divider, Chip, Table, TableBody,
     TableCell, TableContainer, TableHead, TableRow, Paper, Alert,
-    Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText
+    Dialog, DialogTitle, DialogContent, DialogActions, DialogContentText,
+    IconButton, Collapse, Tabs, Tab, Tooltip, LinearProgress
 } from '@mui/material';
-import { Wallet, Briefcase, TrendingUp, TrendingDown, RefreshCw, History, RotateCcw } from 'lucide-react';
+import { Wallet, Briefcase, TrendingUp, TrendingDown, RefreshCw, History, RotateCcw, Activity, ChevronDown, ChevronUp, Zap, Eye } from 'lucide-react';
 import axios from 'axios';
 import { config } from '../config';
+import { fetchOptionsPortfolio } from '../services/api';
 
 const Portfolio = () => {
     const [portfolio, setPortfolio] = useState(null);
@@ -16,6 +18,9 @@ const Portfolio = () => {
     const [error, setError] = useState(null);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [resetting, setResetting] = useState(false);
+    const [optionsPortfolio, setOptionsPortfolio] = useState(null);
+    const [activeTab, setActiveTab] = useState(0);
+    const [expandedOptionTrade, setExpandedOptionTrade] = useState(null);
 
     const fetchPortfolio = async () => {
         try {
@@ -25,14 +30,19 @@ const Portfolio = () => {
                 authHeaders['Authorization'] = 'Bearer ' + token;
             }
 
-            const response = await axios.get(config.endpoints.trading.portfolio, { headers: authHeaders });
+            const [response, optResp] = await Promise.all([
+                axios.get(config.endpoints.trading.portfolio, { headers: authHeaders }),
+                fetchOptionsPortfolio().catch(() => null),
+            ]);
 
             if (response.data) {
                 setPortfolio(response.data);
             }
+            if (optResp) {
+                setOptionsPortfolio(optResp);
+            }
         } catch (error) {
             console.error("Error fetching portfolio:", error);
-            // On first load failure, show default empty portfolio instead of error
             if (!portfolio) {
                 setPortfolio({
                     cash_balance: 100000,
@@ -90,18 +100,16 @@ const Portfolio = () => {
 
     // Calculate Unrealized P&L
     const unrealizedPnl = portfolio.active_trades.reduce((acc, trade) => {
-        // Since we don't have live price in trade object (only checks in backend), 
-        // we might not see live P&L unless backend updates 'pnl' field on open trades 
-        // OR we fetch live prices here.
-        // For paper trading MVP, we often rely on backend 'pnl' which might be 0 until closed?
-        // Let's assume backend updates it or we display 0 if not available.
-        // Actually typical paper trading apps show live P&L.
-        // The TradeManager implementation didn't explicitly store 'current_pnl' on open trades, only calculated on close.
-        // We can enhance this later. For now, we display 'Open'.
         return acc + (trade.pnl || 0);
     }, 0);
 
-    const _totalValue = portfolio.cash_balance + unrealizedPnl; // + cost basis of active trades ideally
+    const _totalValue = portfolio.cash_balance + unrealizedPnl;
+
+    // Combined capital across stocks + options
+    const optCapital = optionsPortfolio?.capital || 0;
+    const optTotalPnl = optionsPortfolio?.total_pnl || 0;
+    const combinedCapital = portfolio.cash_balance + optCapital;
+    const combinedPnl = portfolio.realized_pnl + optTotalPnl;
 
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -110,7 +118,7 @@ const Portfolio = () => {
                 <Box>
                     <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: -1 }}>Paper Trading</Typography>
                     <Typography variant="subtitle1" color="text.secondary" fontWeight={500}>
-                        Automated AI Execution • 9:15 AM - 3:15 PM
+                        Automated AI Execution • Stocks + Options
                     </Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right' }}>
@@ -133,21 +141,24 @@ const Portfolio = () => {
                             Reset
                         </Button>
                     </Stack>
-                    <Typography variant="caption" color="text.secondary" display="block">Current Balance</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">Combined Capital</Typography>
                     <Typography variant="h4" fontWeight={800} color="primary.main">
-                        ₹{portfolio.cash_balance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        ₹{combinedCapital.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </Typography>
+                    <Typography variant="caption" color={combinedPnl >= 0 ? 'success.main' : 'error.main'} fontWeight={700}>
+                        {combinedPnl >= 0 ? '+' : ''}₹{combinedPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })} total P&L
                     </Typography>
                 </Box>
             </Box>
 
-            {/* Stats Cards */}
-            <Grid container spacing={3} sx={{ mb: 6 }}>
-                <Grid size={{ xs: 12, md: 3 }}>
+            {/* Stats Cards - Combined */}
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                                 <Wallet size={20} className="text-gray-400" />
-                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>AVAILABLE MARGIN</Typography>
+                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>STOCKS MARGIN</Typography>
                             </Box>
                             <Typography variant="h4" fontWeight={800}>
                                 ₹{portfolio.cash_balance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
@@ -155,25 +166,25 @@ const Portfolio = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, height: '100%', borderColor: unrealizedPnl >= 0 ? 'rgba(39, 201, 63, 0.3)' : 'rgba(255, 95, 86, 0.3)', bgcolor: unrealizedPnl >= 0 ? 'rgba(39, 201, 63, 0.05)' : 'rgba(255, 95, 86, 0.05)' }}>
+                <Grid size={{ xs: 6, md: 3 }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <TrendingUp size={20} />
-                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>UNREALIZED P&L</Typography>
+                                <Activity size={20} />
+                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>OPTIONS CAPITAL</Typography>
                             </Box>
-                            <Typography variant="h4" fontWeight={800} sx={{ color: unrealizedPnl >= 0 ? 'success.main' : 'error.main' }}>
-                                {unrealizedPnl >= 0 ? '+' : ''}₹{unrealizedPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            <Typography variant="h4" fontWeight={800}>
+                                ₹{optCapital.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                             </Typography>
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                                 <History size={20} className="text-gray-400" />
-                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>REALIZED P&L</Typography>
+                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>STOCKS REALIZED P&L</Typography>
                             </Box>
                             <Typography variant="h4" fontWeight={800} sx={{ color: portfolio.realized_pnl >= 0 ? 'success.main' : 'error.main' }}>
                                 {portfolio.realized_pnl >= 0 ? '+' : ''}₹{portfolio.realized_pnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -181,21 +192,30 @@ const Portfolio = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 12, md: 3 }}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                <Briefcase size={20} className="text-gray-400" />
-                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>ACTIVE TRADES</Typography>
+                                <TrendingUp size={20} />
+                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>OPTIONS P&L</Typography>
                             </Box>
-                            <Typography variant="h4" fontWeight={800}>
-                                {portfolio.active_trades.length}
+                            <Typography variant="h4" fontWeight={800} sx={{ color: optTotalPnl >= 0 ? 'success.main' : 'error.main' }}>
+                                {optTotalPnl >= 0 ? '+' : ''}₹{optTotalPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                             </Typography>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
+            {/* Tab Switch: Stocks | Options */}
+            <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ mb: 3, '& .MuiTab-root': { fontWeight: 700, textTransform: 'none' } }}>
+                <Tab label={`Stocks (${portfolio.active_trades.length} active)`} icon={<Briefcase size={16} />} iconPosition="start" />
+                <Tab label={`Options (${optionsPortfolio?.stats?.total_trades || 0} trades)`} icon={<Activity size={16} />} iconPosition="start" />
+            </Tabs>
+
+            {/* ── STOCKS TAB ── */}
+            {activeTab === 0 && (
+                <Box>
             {/* Active Trades */}
             <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <TrendingUp size={20} /> Active Positions
@@ -383,6 +403,234 @@ const Portfolio = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+                </Box>
+            )}
+
+            {/* ── OPTIONS TAB ── */}
+            {activeTab === 1 && (
+                <Box>
+                    {!optionsPortfolio ? (
+                        <Alert severity="info" sx={{ borderRadius: 2 }}>Options trading service is loading...</Alert>
+                    ) : (
+                        <>
+                            {/* Options Stats */}
+                            <Grid container spacing={2} sx={{ mb: 3 }}>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                                            <Typography variant="h4" fontWeight={800}>
+                                                {optionsPortfolio.stats?.total_trades || 0}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>TOTAL TRADES</Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                                            <Typography variant="h4" fontWeight={800} color="success.main">
+                                                {optionsPortfolio.stats?.wins || 0}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>WINS</Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                                            <Typography variant="h4" fontWeight={800} color="error.main">
+                                                {optionsPortfolio.stats?.losses || 0}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>LOSSES</Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <Card variant="outlined" sx={{ borderRadius: 3 }}>
+                                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                                            <Typography variant="h4" fontWeight={800}
+                                                color={(optionsPortfolio.stats?.win_rate || 0) >= 50 ? 'success.main' : 'error.main'}>
+                                                {(optionsPortfolio.stats?.win_rate || 0).toFixed(0)}%
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" fontWeight={700}>WIN RATE</Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            </Grid>
+
+                            {/* Active Options Position */}
+                            {optionsPortfolio.active_trades?.length > 0 && (
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Zap size={20} /> Active Option Position
+                                    </Typography>
+                                    {optionsPortfolio.active_trades.map((t) => (
+                                        <Card key={t.trade_id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+                                            <Stack direction="row" alignItems="center" spacing={2} flexWrap="wrap">
+                                                <Chip label={t.direction} size="small" sx={{
+                                                    fontWeight: 800,
+                                                    bgcolor: t.direction === 'CE' ? 'rgba(39, 201, 63, 0.1)' : 'rgba(255, 95, 86, 0.1)',
+                                                    color: t.direction === 'CE' ? 'success.main' : 'error.main',
+                                                }} />
+                                                <Typography fontWeight={700}>Strike {t.strike}</Typography>
+                                                <Typography variant="body2">Entry: ₹{t.entry_premium?.toFixed(2)}</Typography>
+                                                <Typography variant="body2">SL: ₹{t.sl_premium?.toFixed(2)}</Typography>
+                                                <Typography variant="body2">Target: ₹{t.target_premium?.toFixed(2)}</Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {t.quantity} qty ({t.lots} lot)
+                                                </Typography>
+                                            </Stack>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            )}
+
+                            {/* Options Trade History with Indicators */}
+                            <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <History size={20} /> Options Trade History
+                                {(optionsPortfolio.trade_history || []).length > 0 && (
+                                    <Chip label={(optionsPortfolio.trade_history || []).length} size="small" sx={{ fontWeight: 700, ml: 1 }} />
+                                )}
+                            </Typography>
+
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: 'rgba(255,255,255,0.02)' }}>
+                                        <TableRow>
+                                            <TableCell width={40} />
+                                            <TableCell><Typography variant="caption" fontWeight={700}>DIRECTION</Typography></TableCell>
+                                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>STRIKE</Typography></TableCell>
+                                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>ENTRY</Typography></TableCell>
+                                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>EXIT</Typography></TableCell>
+                                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>P&L</Typography></TableCell>
+                                            <TableCell align="center"><Typography variant="caption" fontWeight={700}>RESULT</Typography></TableCell>
+                                            <TableCell><Typography variant="caption" fontWeight={700}>TIME</Typography></TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {(optionsPortfolio.trade_history || []).length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                                                    No options trades yet. Trades appear here when auto-trader executes.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            [...(optionsPortfolio.trade_history || [])].reverse().map((trade) => {
+                                                const isWin = trade.result === 'WIN';
+                                                const hasIndicators = trade.indicators && Object.keys(trade.indicators).length > 0;
+                                                const isExpanded = expandedOptionTrade === trade.trade_id;
+                                                return (
+                                                    <React.Fragment key={trade.trade_id}>
+                                                        <TableRow
+                                                            hover
+                                                            onClick={() => hasIndicators && setExpandedOptionTrade(isExpanded ? null : trade.trade_id)}
+                                                            sx={{ cursor: hasIndicators ? 'pointer' : 'default' }}
+                                                        >
+                                                            <TableCell>
+                                                                {hasIndicators && (
+                                                                    <IconButton size="small">
+                                                                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                                    </IconButton>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Chip label={trade.direction} size="small" sx={{
+                                                                    fontWeight: 800, fontSize: '0.65rem', borderRadius: 1,
+                                                                    bgcolor: trade.direction === 'CE' ? 'rgba(39, 201, 63, 0.1)' : 'rgba(255, 95, 86, 0.1)',
+                                                                    color: trade.direction === 'CE' ? 'success.main' : 'error.main',
+                                                                }} />
+                                                            </TableCell>
+                                                            <TableCell align="right">
+                                                                <Typography variant="body2" fontWeight={700}>{trade.strike}</Typography>
+                                                            </TableCell>
+                                                            <TableCell align="right">₹{trade.entry_premium?.toFixed(2)}</TableCell>
+                                                            <TableCell align="right">₹{trade.exit_premium?.toFixed(2) || '—'}</TableCell>
+                                                            <TableCell align="right">
+                                                                <Typography variant="body2" fontWeight={700}
+                                                                    sx={{ color: isWin ? 'success.main' : 'error.main' }}>
+                                                                    {isWin ? '+' : ''}₹{(trade.pnl || 0).toFixed(2)}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    {(trade.pnl_pct || 0).toFixed(2)}%
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <Chip label={trade.result || 'OPEN'} size="small" sx={{
+                                                                    fontWeight: 800, fontSize: '0.6rem', borderRadius: 1,
+                                                                    bgcolor: isWin ? 'rgba(39, 201, 63, 0.15)' : 'rgba(255, 95, 86, 0.15)',
+                                                                    color: isWin ? 'success.main' : 'error.main',
+                                                                }} />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Typography variant="caption" color="text.secondary" noWrap>
+                                                                    {trade.entry_time ? new Date(trade.entry_time).toLocaleString('en-IN', {
+                                                                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+                                                                    }) : ''}
+                                                                </Typography>
+                                                                {trade.hold_duration_sec && (
+                                                                    <Typography variant="caption" color="text.secondary" display="block">
+                                                                        Hold: {trade.hold_duration_sec < 60
+                                                                            ? `${trade.hold_duration_sec.toFixed(0)}s`
+                                                                            : `${(trade.hold_duration_sec / 60).toFixed(1)}m`}
+                                                                    </Typography>
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+
+                                                        {/* Expanded Indicator Details */}
+                                                        {hasIndicators && (
+                                                            <TableRow>
+                                                                <TableCell colSpan={8} sx={{ p: 0 }}>
+                                                                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                                                                        <Box sx={{ p: 2, bgcolor: 'rgba(99, 102, 241, 0.03)' }}>
+                                                                            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                <Eye size={14} /> Why This Trade Was Taken
+                                                                            </Typography>
+                                                                            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1 }}>
+                                                                                <Chip size="small" variant="outlined"
+                                                                                    label={`EMA9: ${trade.indicators.ema9?.toFixed(2) || '—'}`}
+                                                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                                                                />
+                                                                                <Chip size="small" variant="outlined"
+                                                                                    label={`VWAP: ${trade.indicators.vwap?.toFixed(2) || '—'}`}
+                                                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                                                                />
+                                                                                <Chip size="small" variant="outlined"
+                                                                                    label={`RSI(7): ${trade.indicators.rsi7?.toFixed(1) || '—'}`}
+                                                                                    color={trade.indicators.rsi7 > 60 ? 'success' : trade.indicators.rsi7 < 40 ? 'error' : 'default'}
+                                                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                                                                />
+                                                                                <Chip size="small" variant="outlined"
+                                                                                    label={`Vol: ${trade.indicators.volume_spike?.toFixed(1) || '—'}x`}
+                                                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                                                                />
+                                                                                <Chip size="small" variant="outlined"
+                                                                                    label={`Conf: ${(trade.indicators.confidence || 0).toFixed(0)}%`}
+                                                                                    color={(trade.indicators.confidence || 0) > 50 ? 'primary' : 'default'}
+                                                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                                                                />
+                                                                            </Stack>
+                                                                            {(trade.indicators.reasons || []).map((r, i) => (
+                                                                                <Typography key={i} variant="caption" display="block" sx={{ pl: 1, lineHeight: 1.6 }}>
+                                                                                    • {r}
+                                                                                </Typography>
+                                                                            ))}
+                                                                        </Box>
+                                                                    </Collapse>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </>
+                    )}
+                </Box>
+            )}
 
             {/* Reset Confirmation Dialog */}
             <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)}>

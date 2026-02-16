@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import api from '../services/api';
 import AdminModelReport from './AdminModelReport';
+import AdminOptionsReport from './AdminOptionsReport';
 
 const Admin = () => {
     const { user } = useAuth();
@@ -293,6 +294,10 @@ const Admin = () => {
 
             <Box sx={{ my: 4 }}>
                 <AdminModelReport />
+            </Box>
+
+            <Box sx={{ my: 4 }}>
+                <AdminOptionsReport />
             </Box>
         </Container>
     );

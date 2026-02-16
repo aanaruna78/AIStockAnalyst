@@ -270,4 +270,14 @@ export const toggleAutoTrade = async () => {
     return data;
 };
 
+export const fetchLearningStats = async () => {
+    const { data } = await api.get('/options/learning/stats');
+    return data;
+};
+
+export const resetLearning = async () => {
+    const { data } = await api.post('/options/learning/reset');
+    return data;
+};
+
 export default api;

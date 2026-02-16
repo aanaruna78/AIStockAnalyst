@@ -95,3 +95,13 @@ async def auto_trade_status():
 @router.post("/auto-trade/toggle")
 async def toggle_auto_trade():
     return await _proxy_post("/auto-trade/toggle")
+
+
+@router.get("/learning/stats")
+async def get_learning_stats():
+    return await _proxy_get("/learning/stats")
+
+
+@router.post("/learning/reset")
+async def reset_learning():
+    return await _proxy_post("/learning/reset")
