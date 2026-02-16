@@ -64,6 +64,13 @@ services:
     volumes: []
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
+  options-scalping-service:
+    restart: unless-stopped
+    volumes:
+      - options_data:/app/data
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000
+
 volumes:
   api_gateway_data:
   trading_data:
+  options_data:
