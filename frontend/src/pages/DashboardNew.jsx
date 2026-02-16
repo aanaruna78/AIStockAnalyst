@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     Box, Typography, Grid, Card, CardContent, Chip, Button, Skeleton,
     IconButton, Dialog, DialogTitle, DialogContent, Stack, Tooltip,
@@ -227,14 +227,14 @@ const SignalCard = ({ rec, onViewReport, ltp, prevLtp, isAiTraded }) => {
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', fontWeight: 600 }}>
                                     LTP
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.55rem' }}>•</Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>
+                                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem' }}>•</Typography>
+                                <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
                                     Rec: {formatINR(entryPrice, 2)}
                                 </Typography>
                             </>
                         ) : (
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>
-                                Recommended Price
+                            <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
+                                Rec: {formatINR(entryPrice, 2)}
                             </Typography>
                         )}
                     </Box>
@@ -372,7 +372,7 @@ const Dashboard = () => {
                 (data.active_trades || []).forEach(t => symbols.add(t.symbol));
                 (data.trade_history || []).forEach(t => symbols.add(t.symbol));
                 setTradedSymbols(symbols);
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
         };
         fetchTradedSymbols();
         const interval = setInterval(fetchTradedSymbols, 60000);
@@ -388,9 +388,11 @@ const Dashboard = () => {
         const fetchLtps = async () => {
             try {
                 const data = await fetchBatchQuotes(symbols);
-                setPrevLtpData(prev => ({ ...ltpData }));
-                setLtpData(data || {});
-            } catch (e) { /* ignore */ }
+                setLtpData(prev => {
+                    setPrevLtpData(prev);
+                    return data || {};
+                });
+            } catch { /* ignore */ }
         };
         fetchLtps();
         const interval = setInterval(fetchLtps, 30000);

@@ -100,7 +100,6 @@ async def generate_recommendation(request: RecommendationRequest):
     
     # 3. Construct Waterfall Rationale
     regime = breakdown.get("regime", "CHOP")
-    weights = breakdown.get("weights", {})
     penalty = breakdown.get("risk_penalty", 0.0)
     
     # Helper to map regime code to description

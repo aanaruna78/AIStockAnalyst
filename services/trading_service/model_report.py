@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 import pytz
 
-from failed_trade_log import get_failed_trades, get_failed_trades_today, get_trade_failure_stats
+from failed_trade_log import get_failed_trades_today, get_trade_failure_stats
 
 IST = pytz.timezone("Asia/Kolkata")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

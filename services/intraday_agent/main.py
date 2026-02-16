@@ -463,7 +463,7 @@ class IntradayAgent:
                             f"Old position closed but new {direction} entry failed")
                 else:
                     self.log_action("REVERSAL_FAILED", symbol,
-                        f"Could not close existing position for reversal")
+                        "Could not close existing position for reversal")
             self.state = AgentState.MONITORING
 
         # Execute new entries one by one

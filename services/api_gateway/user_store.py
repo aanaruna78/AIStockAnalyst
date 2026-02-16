@@ -14,7 +14,6 @@ import json
 import os
 import threading
 import logging
-from pathlib import Path
 from typing import Optional
 
 from shared.models import User

@@ -1,5 +1,4 @@
 """Tests for shared/models.py — Pydantic model validations."""
-import pytest
 from datetime import datetime
 from shared.models import (
     Direction,

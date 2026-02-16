@@ -1,5 +1,4 @@
 """Tests for services/ingestion_service/provenance.py — provenance tracking."""
-import pytest
 from datetime import datetime
 from services.ingestion_service.provenance import ProvenanceTracker
 

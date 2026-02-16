@@ -1,6 +1,4 @@
 """Tests for shared/config.py — GlobalConfig defaults and overrides."""
-import os
-import pytest
 from shared.config import GlobalConfig
 
 

@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 import sys
 import os
-from typing import List
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 

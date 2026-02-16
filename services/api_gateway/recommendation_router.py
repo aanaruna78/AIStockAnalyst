@@ -49,7 +49,7 @@ async def trigger_recommendation(data: dict):
             return response.json()
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=503, detail="Recommendation engine temporarily unavailable")
 
 @router.websocket("/ws")

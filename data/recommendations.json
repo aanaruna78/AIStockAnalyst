@@ -4918,7 +4918,7 @@
     "vix_multiplier": 1.0,
     "id": "BHARTIARTL_1771226917",
     "created_at": "2026-02-16T07:28:37.241768",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T11:28:37.241770"
   },
   "LICI_1771226921": {
@@ -5309,7 +5309,7 @@
     "vix_multiplier": 1.0,
     "id": "LICI_1771238315",
     "created_at": "2026-02-16T10:38:35.907503",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T14:38:35.907505"
   },
   "ITC_1771238317": {
@@ -5403,5 +5403,51 @@
     "created_at": "2026-02-16T10:48:30.634440",
     "status": "active",
     "expires_at": "2026-02-16T14:48:30.634442"
+  },
+  "BHARTIARTL_1771239517": {
+    "symbol": "BHARTIARTL",
+    "direction": "DOWN",
+    "conviction": 36.5,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.1% YoY. Net Margin: 14.7%.\n\n**Fundamental Analysis**\n- Metrics: PE 39.640155705891345 (Sector 110.37357862931628), PB 7.850118612567204\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 19.8% CAGR over last 5 years\n- Weaknesses: Stock is trading at 8.24 times its book value; Promoter holding has decreased over last quarter: -1.40%\n- Efficiency: ROCE 8.18%, ROE 11.4%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 22.0,
+      "Analyst": 0
+    },
+    "entry": 634.64,
+    "target1": 585.71,
+    "target2": 561.24,
+    "sl": 659.11,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "BHARTIARTL_1771239517",
+    "created_at": "2026-02-16T10:58:37.441411",
+    "status": "active",
+    "expires_at": "2026-02-16T14:58:37.441413"
+  },
+  "LICI_1771239524": {
+    "symbol": "LICI",
+    "direction": "UP",
+    "conviction": 30.91,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 31% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 3.0% YoY. Net Margin: 18.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 5.091392932679861 (Sector 18.361339884928462), PB 0.7680802220901314\n- Scorecard: Valuation <span style=\"color: #27c93f; font-weight: bold;\">Low</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 77.5% CAGR over last 5 years; Company has a good return on equity (ROE) track record: 3 Years ROE 63.7%\n- Weaknesses: The company has delivered a poor sales growth of 7.56% over past five years.\n- Efficiency: ROCE 53.4%, ROE 46.0%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 34.0,
+      "Analyst": 0
+    },
+    "entry": 200.48,
+    "target1": 217.1,
+    "target2": 225.4,
+    "sl": 192.17,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "LICI_1771239524",
+    "created_at": "2026-02-16T10:58:44.613808",
+    "status": "active",
+    "expires_at": "2026-02-16T14:58:44.613811"
   }
 }
