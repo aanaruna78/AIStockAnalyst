@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 import sys
 import os
+from typing import List
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
@@ -26,6 +27,27 @@ async def get_quote(symbol: str):
     if not quote:
         raise HTTPException(status_code=404, detail="Quote not found")
     return quote
+
+@app.get("/quotes/batch")
+async def get_batch_quotes(symbols: str = Query(..., description="Comma-separated symbols")):
+    """Get live quotes for multiple symbols at once.
+    Usage: /quotes/batch?symbols=RELIANCE,TATASTEEL,INFY
+    """
+    symbol_list = [s.strip() for s in symbols.split(",") if s.strip()]
+    if not symbol_list:
+        return {}
+    if len(symbol_list) > 50:
+        raise HTTPException(status_code=400, detail="Max 50 symbols per batch request")
+    
+    results = {}
+    for sym in symbol_list:
+        try:
+            quote = dhan_client.get_live_price(sym)
+            if quote and quote.get("ltp"):
+                results[sym] = {"ltp": quote["ltp"], "open": quote.get("open"), "high": quote.get("high"), "low": quote.get("low"), "close": quote.get("close")}
+        except Exception as e:
+            logger.warning(f"Batch quote failed for {sym}: {e}")
+    return results
 
 @app.get("/ohlc/{symbol}")
 async def get_ohlc(symbol: str, interval: str = "1D", days: int = 30):

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
     Box, Typography, Grid, Card, CardContent, Chip, Button, Skeleton,
     IconButton, Dialog, DialogTitle, DialogContent, Stack, Tooltip,
@@ -8,12 +8,13 @@ import {
 import {
     ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, Clock, ShieldCheck,
     Info, RefreshCw, Loader2, Search, Filter, ChevronRight, Activity,
-    Target, AlertTriangle, BarChart3, Zap, Eye, BookOpen, Terminal, X
+    Target, AlertTriangle, BarChart3, Zap, Eye, BookOpen, Terminal, X, Bot, CheckCircle
 } from 'lucide-react';
 import { useRecommendations } from '../hooks/useRecommendations';
 import RationaleRenderer from '../components/RationaleRenderer';
 import TickerBar from '../components/TickerBar';
 import { formatINR, isBullish, getDirectionColor, getDirectionBg, getDirectionLabel, getConvictionLevel, SCORE_COLORS, timeAgo } from '../utils/formatters';
+import { fetchPortfolio, fetchBatchQuotes } from '../services/api';
 
 // ─── Live Log Terminal ──────────────────────────────────────────
 const LiveLogTerminal = ({ logs }) => {
@@ -98,22 +99,34 @@ const LiveLogTerminal = ({ logs }) => {
 };
 
 // ─── Signal Card ────────────────────────────────────────────────
-const SignalCard = ({ rec, onViewReport }) => {
+const SignalCard = ({ rec, onViewReport, ltp, prevLtp, isAiTraded }) => {
     const theme = useTheme();
     const bullish = isBullish(rec.direction);
     const dirColor = getDirectionColor(rec.direction);
     const conviction = rec.conviction || rec.confidence || 0;
     const convLevel = getConvictionLevel(conviction);
 
+    // Determine LTP tick direction
+    const entryPrice = rec.price || rec.entry;
+    const currentLtp = ltp || entryPrice;
+    const tickDir = prevLtp ? (currentLtp > prevLtp ? 'up' : currentLtp < prevLtp ? 'down' : 'flat') : 'flat';
+    const ltpColor = tickDir === 'up' ? '#10b981' : tickDir === 'down' ? '#ef4444' : 'text.primary';
+    const ltpChange = entryPrice > 0 ? ((currentLtp - entryPrice) / entryPrice * 100) : 0;
+
     return (
         <Card sx={{
             height: '100%',
             position: 'relative',
             overflow: 'visible',
+            transition: 'all 0.2s ease',
+            ...(isAiTraded && {
+                border: `2px solid ${alpha('#38bdf8', 0.5)}`,
+                boxShadow: `0 0 16px ${alpha('#38bdf8', 0.12)}`,
+            }),
             '&:hover': {
                 transform: 'translateY(-2px)',
                 boxShadow: `0 8px 24px ${alpha(dirColor, 0.15)}`,
-                borderColor: alpha(dirColor, 0.3),
+                borderColor: isAiTraded ? alpha('#38bdf8', 0.7) : alpha(dirColor, 0.3),
             },
             '&::before': {
                 content: '""',
@@ -121,9 +134,33 @@ const SignalCard = ({ rec, onViewReport }) => {
                 top: 0, left: 0, right: 0,
                 height: 3,
                 borderRadius: '16px 16px 0 0',
-                background: `linear-gradient(90deg, ${dirColor}, ${alpha(dirColor, 0.4)})`,
+                background: isAiTraded
+                    ? `linear-gradient(90deg, #38bdf8, ${dirColor})`
+                    : `linear-gradient(90deg, ${dirColor}, ${alpha(dirColor, 0.4)})`,
             },
         }}>
+            {/* AI Traded Badge */}
+            {isAiTraded && (
+                <Chip
+                    icon={<Bot size={11} />}
+                    label="AI TRADED"
+                    size="small"
+                    sx={{
+                        position: 'absolute',
+                        top: -10,
+                        right: 12,
+                        height: 20,
+                        fontSize: '0.55rem',
+                        fontWeight: 900,
+                        letterSpacing: '0.05em',
+                        bgcolor: '#38bdf8',
+                        color: '#fff',
+                        zIndex: 1,
+                        '& .MuiChip-icon': { color: '#fff', ml: 0.5 },
+                        boxShadow: `0 2px 8px ${alpha('#38bdf8', 0.4)}`,
+                    }}
+                />
+            )}
             <CardContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', height: '100%' }}>
                 {/* Header */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
@@ -159,10 +196,49 @@ const SignalCard = ({ rec, onViewReport }) => {
                     </Tooltip>
                 </Box>
 
-                {/* Price */}
-                <Typography variant="h5" fontWeight={800} sx={{ mb: 2, letterSpacing: '-0.02em' }}>
-                    {formatINR(rec.price || rec.entry, 2)}
-                </Typography>
+                {/* LTP + Recommended Price */}
+                <Box sx={{ mb: 2 }}>
+                    {/* LTP - large, with tick color */}
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                        <Typography variant="h5" fontWeight={800} sx={{
+                            letterSpacing: '-0.02em',
+                            color: ltpColor,
+                            transition: 'color 0.3s ease',
+                        }}>
+                            {formatINR(currentLtp, 2)}
+                        </Typography>
+                        {ltp && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
+                                {tickDir === 'up' && <ArrowUpRight size={14} color="#10b981" />}
+                                {tickDir === 'down' && <ArrowDownRight size={14} color="#ef4444" />}
+                                <Typography variant="caption" fontWeight={700} sx={{
+                                    color: ltpChange >= 0 ? '#10b981' : '#ef4444',
+                                    fontSize: '0.7rem',
+                                }}>
+                                    {ltpChange >= 0 ? '+' : ''}{ltpChange.toFixed(2)}%
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
+                    {/* Label row: LTP vs Recommended */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.3 }}>
+                        {ltp ? (
+                            <>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', fontWeight: 600 }}>
+                                    LTP
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.55rem' }}>•</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>
+                                    Rec: {formatINR(entryPrice, 2)}
+                                </Typography>
+                            </>
+                        ) : (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>
+                                Recommended Price
+                            </Typography>
+                        )}
+                    </Box>
+                </Box>
 
                 {/* Targets */}
                 <Grid container spacing={1} sx={{ mb: 2 }}>
@@ -282,7 +358,44 @@ const Dashboard = () => {
     const [filterTab, setFilterTab] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [scanLogOpen, setScanLogOpen] = useState(false);
+    const [ltpData, setLtpData] = useState({});
+    const [prevLtpData, setPrevLtpData] = useState({});
+    const [tradedSymbols, setTradedSymbols] = useState(new Set());
     const recs = useMemo(() => Array.isArray(recommendations) ? recommendations : [], [recommendations]);
+
+    // Fetch portfolio to find AI-traded symbols
+    useEffect(() => {
+        const fetchTradedSymbols = async () => {
+            try {
+                const data = await fetchPortfolio();
+                const symbols = new Set();
+                (data.active_trades || []).forEach(t => symbols.add(t.symbol));
+                (data.trade_history || []).forEach(t => symbols.add(t.symbol));
+                setTradedSymbols(symbols);
+            } catch (e) { /* ignore */ }
+        };
+        fetchTradedSymbols();
+        const interval = setInterval(fetchTradedSymbols, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Fetch batch LTP for all visible recommendations
+    useEffect(() => {
+        if (recs.length === 0) return;
+        const symbols = recs.map(r => r.symbol).filter(Boolean);
+        if (symbols.length === 0) return;
+
+        const fetchLtps = async () => {
+            try {
+                const data = await fetchBatchQuotes(symbols);
+                setPrevLtpData(prev => ({ ...ltpData }));
+                setLtpData(data || {});
+            } catch (e) { /* ignore */ }
+        };
+        fetchLtps();
+        const interval = setInterval(fetchLtps, 30000);
+        return () => clearInterval(interval);
+    }, [recs]);
 
     const filteredRecs = useMemo(() => {
         let filtered = recs
@@ -390,7 +503,13 @@ const Dashboard = () => {
                             </Grid>
                         ) : filteredRecs.map((rec) => (
                             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={rec.id}>
-                                <SignalCard rec={rec} onViewReport={setSelectedRec} />
+                                <SignalCard
+                                    rec={rec}
+                                    onViewReport={setSelectedRec}
+                                    ltp={ltpData[rec.symbol]?.ltp}
+                                    prevLtp={prevLtpData[rec.symbol]?.ltp}
+                                    isAiTraded={tradedSymbols.has(rec.symbol)}
+                                />
                             </Grid>
                         ))}
                     </Grid>

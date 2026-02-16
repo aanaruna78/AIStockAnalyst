@@ -83,6 +83,12 @@ export const fetchOHLC = async (symbol, interval = '5m') => {
     return data;
 };
 
+export const fetchBatchQuotes = async (symbols) => {
+    if (!symbols || symbols.length === 0) return {};
+    const { data } = await api.get('/market/quotes/batch', { params: { symbols: symbols.join(',') } });
+    return data;  // { RELIANCE: { ltp: 2500.0, ... }, TATASTEEL: { ltp: 145.0, ... } }
+};
+
 // ─── Watchlist ──────────────────────────────────────────────────
 export const fetchWatchlist = async () => {
     const saved = JSON.parse(localStorage.getItem('watchlist') || '[]');

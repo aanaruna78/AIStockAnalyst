@@ -9,6 +9,7 @@ logger = logging.getLogger("ingestion_proxy")
 
 INGESTION_SERVICE_URL = settings.INGESTION_SERVICE_URL
 INGESTION_WS_URL = f"{settings.INGESTION_WS_URL}/ws/progress"
+MARKET_DATA_SERVICE_URL = settings.MARKET_DATA_SERVICE_URL
 
 # Longer timeout for endpoints that fetch external market data
 _TIMEOUT = httpx.Timeout(30.0, connect=10.0)
@@ -46,6 +47,20 @@ async def trigger_crawl(limit: int = 100):
     except Exception as e:
         logger.error(f"Ingestion service /batch/run unreachable: {e}")
         raise HTTPException(status_code=503, detail="Ingestion service temporarily unavailable")
+
+@router.get("/market/quotes/batch")
+async def get_batch_quotes(symbols: str = ""):
+    """Get live LTP for multiple symbols. Usage: ?symbols=RELIANCE,TATASTEEL,INFY"""
+    if not symbols.strip():
+        return {}
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            resp = await client.get(f"{MARKET_DATA_SERVICE_URL}/quotes/batch", params={"symbols": symbols})
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        logger.warning(f"Batch quotes failed: {e}")
+        return {}
 
 @router.get("/scan/config")
 async def get_scan_config():
