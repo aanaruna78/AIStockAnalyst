@@ -3,7 +3,7 @@ import {
     AppBar, Toolbar, Typography, Box, Button, IconButton, Avatar, Menu, MenuItem,
     Tooltip, Divider, alpha, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText
 } from '@mui/material';
-import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap, Shield, Menu as MenuIcon, X } from 'lucide-react';
+import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap, Shield, Menu as MenuIcon, X, Target } from 'lucide-react';
 import { useColorMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -14,6 +14,7 @@ const navItems = [
     { label: 'Watchlist', path: '/watchlist', icon: <Bookmark size={16} /> },
     { label: 'Alerts', path: '/alerts', icon: <Bell size={16} /> },
     { label: 'Agent', path: '/agent', icon: <Bot size={16} /> },
+    { label: 'Options', path: '/options', icon: <Target size={16} /> },
 ];
 
 const Header = () => {

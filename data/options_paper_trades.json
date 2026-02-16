@@ -1,0 +1,9 @@
+{
+  "capital": 100000.0,
+  "active_trades": [],
+  "trade_history": [],
+  "total_pnl": 0.0,
+  "daily_pnl": 0.0,
+  "day_trade_count": 0,
+  "current_date": "2026-02-16"
+}

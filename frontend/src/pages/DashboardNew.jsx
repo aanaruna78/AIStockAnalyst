@@ -401,7 +401,7 @@ const Dashboard = () => {
 
     const filteredRecs = useMemo(() => {
         let filtered = recs
-            .filter(r => (r.conviction || r.confidence || 0) >= 20 && r.rationale !== 'AI Analysis pending...')
+            .filter(r => (r.conviction || r.confidence || 0) >= 10 && r.rationale !== 'AI Analysis pending...')
             .sort((a, b) => (b.conviction || b.confidence || 0) - (a.conviction || a.confidence || 0));
 
         if (filterTab === 'long') filtered = filtered.filter(r => isBullish(r.direction));

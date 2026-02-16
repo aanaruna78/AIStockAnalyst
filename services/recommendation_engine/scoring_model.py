@@ -240,8 +240,12 @@ class ScoringModel:
         # raw_score: 0.0 = strongly bearish, 0.5 = neutral, 1.0 = strongly bullish
         # direction: derived from which side of 0.5
         # conviction: how far from neutral, scaled to 0-100%
+        #   Raw distance from 0.5 is 0.0–0.5, but practical max is ~0.20
+        #   Rescale so practical range maps to 0-100%:
+        #   distance 0.05 → ~25%, 0.10 → ~50%, 0.15 → ~75%, 0.20 → ~100%
         direction = "UP" if final_score >= 0.5 else "DOWN"
-        conviction = abs(final_score - 0.5) * 200  # 0-100 scale
+        distance = abs(final_score - 0.5)
+        conviction = min(100.0, (distance / 0.20) * 100)  # 0.20 distance = 100%
 
         return {
             "final_score": round(conviction, 2),

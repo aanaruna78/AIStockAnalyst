@@ -219,4 +219,45 @@ export const fetchModelFeedback = async () => {
     return data;
 };
 
+// ─── Options Scalping ───────────────────────────────────────────
+export const fetchOptionsSpot = async () => {
+    const { data } = await api.get('/options/spot');
+    return data;
+};
+
+export const fetchOptionsChain = async () => {
+    const { data } = await api.get('/options/chain');
+    return data;
+};
+
+export const fetchScalpSignal = async () => {
+    const { data } = await api.get('/options/signal');
+    return data;
+};
+
+export const fetchOptionsPortfolio = async () => {
+    const { data } = await api.get('/options/portfolio');
+    return data;
+};
+
+export const fetchOptionsDailyStats = async () => {
+    const { data } = await api.get('/options/stats/daily');
+    return data;
+};
+
+export const placeOptionsTrade = async (payload) => {
+    const { data } = await api.post('/options/trade/place', payload);
+    return data;
+};
+
+export const closeOptionsTrade = async (tradeId) => {
+    const { data } = await api.post('/options/trade/close', { trade_id: tradeId });
+    return data;
+};
+
+export const resetOptionsPortfolio = async () => {
+    const { data } = await api.post('/options/portfolio/reset');
+    return data;
+};
+
 export default api;

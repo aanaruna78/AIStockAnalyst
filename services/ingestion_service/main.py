@@ -212,7 +212,7 @@ def setup_scheduler():
 
 async def scheduled_scan():
     logger.info("Starting scheduled market scan...")
-    scan_config["last_scan_time"] = datetime.now().isoformat()
+    scan_config["last_scan_time"] = datetime.now(tz=timezone.utc).isoformat()
     await run_batch(limit=10, progress_callback=progress_callback)
 
 @app.on_event("startup")

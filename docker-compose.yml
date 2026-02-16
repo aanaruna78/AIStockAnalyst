@@ -24,6 +24,7 @@ services:
       - ALERT_SERVICE_URL=http://alert-service:8000
       - INTRADAY_AGENT_URL=http://intraday-agent:8000
       - CHART_ANALYSIS_URL=http://chart-analysis-service:8000
+      - OPTIONS_SCALPING_URL=http://options-scalping-service:8000
     depends_on:
       ingestion-service:
         condition: service_started
@@ -44,6 +45,8 @@ services:
       intraday-agent:
         condition: service_started
       chart-analysis-service:
+        condition: service_started
+      options-scalping-service:
         condition: service_started
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
@@ -258,6 +261,29 @@ services:
     environment:
       - ENV=development
       - MARKET_DATA_URL=http://market-data-service:8000
+    depends_on:
+      market-data-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  options-scalping-service:
+    build: ./services/options_scalping_service
+    ports:
+      - "18010:8000"
+    volumes:
+      - ./services/options_scalping_service:/app
+      - ./shared:/app/shared
+      - ./data:/app/data
+    environment:
+      - ENV=development
+      - MARKET_DATA_SERVICE_URL=http://market-data-service:8000
+      - DATA_DIR=/app/data
     depends_on:
       market-data-service:
         condition: service_started

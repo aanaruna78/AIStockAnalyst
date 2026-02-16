@@ -18,6 +18,7 @@ import Portfolio from './pages/Portfolio';
 import AgentDashboard from './pages/AgentDashboard';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import OptionsScalping from './pages/OptionsScalping';
 import { fetchAlerts } from './services/api';
 import { isBullish } from './utils/formatters';
 
@@ -86,6 +87,7 @@ function App() {
               <Route path="/agent" element={<RequireAuth><AgentDashboard /></RequireAuth>} />
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+              <Route path="/options" element={<RequireAuth><OptionsScalping /></RequireAuth>} />
             </Routes>
           </Box>
 
