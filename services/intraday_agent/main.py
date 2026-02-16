@@ -20,6 +20,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, List, Optional
 from pydantic import BaseModel
 from enum import Enum
+import pytz
 
 # ─── Configuration ───────────────────────────────────────────────
 TRADING_SERVICE_URL = os.getenv("TRADING_SERVICE_URL", "http://trading-service:8000")
@@ -33,9 +34,14 @@ MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "10"))
 MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "50000"))
 MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "15"))
 TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "1.0"))  # 1% move triggers trailing
-MARKET_OPEN = dtime(9, 15)
+MARKET_OPEN = dtime(9, 20)   # Start trading at 9:20 AM IST (skip first 5 min volatility)
 MARKET_CLOSE = dtime(15, 15)
 SQUARE_OFF_TIME = dtime(15, 10)  # Square off 5 min before close
+IST = pytz.timezone("Asia/Kolkata")
+
+# Limit order offset: +0.1% above LTP for BUY, -0.1% below LTP for SELL
+# This avoids catching stale/wrong prices from data feeds
+LIMIT_ORDER_OFFSET_PCT = 0.001  # 0.1%
 
 
 # ─── Models ──────────────────────────────────────────────────────
@@ -74,22 +80,18 @@ class IntradayAgent:
         self._last_reset_date = None  # Track daily reset
 
     def is_market_hours(self) -> bool:
-        """Check if current time is within Indian market hours (IST = UTC+5:30)."""
-        from datetime import timezone, timedelta
-        ist = timezone(timedelta(hours=5, minutes=30))
-        now = datetime.now(ist).time()
+        """Check if current time is within Indian market hours (9:20-15:15 IST)."""
+        now = datetime.now(IST).time()
         return MARKET_OPEN <= now <= MARKET_CLOSE
 
     def is_square_off_time(self) -> bool:
         """Check if we should square off all positions."""
-        from datetime import timezone, timedelta
-        ist = timezone(timedelta(hours=5, minutes=30))
-        now = datetime.now(ist).time()
+        now = datetime.now(IST).time()
         return now >= SQUARE_OFF_TIME
 
     def log_action(self, action: str, symbol: str = "", detail: str = ""):
         entry = AgentAction(
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(IST).isoformat(),
             action=action,
             symbol=symbol,
             detail=detail
@@ -134,11 +136,14 @@ class IntradayAgent:
         return None
 
     async def execute_trade(self, rec: Dict) -> bool:
-        """Execute a specific trade via the trading service."""
+        """Execute a specific trade via the trading service.
+        Uses limit order at +0.1% above LTP (BUY) or -0.1% below LTP (SELL)
+        to avoid catching stale/wrong prices from data feeds.
+        """
         symbol = rec.get("symbol", "")
         direction = rec.get("direction", "")
-        entry = rec.get("entry") or rec.get("price", 0)
-        if not entry or entry <= 0:
+        ltp = rec.get("entry") or rec.get("price", 0)
+        if not ltp or ltp <= 0:
             self.log_action("SKIP_NO_PRICE", symbol, "No valid entry price")
             return False
 
@@ -147,6 +152,8 @@ class IntradayAgent:
 
         if is_bullish:
             trade_type = "BUY"
+            # Limit order: entry at LTP + 0.1% (slightly above to fill)
+            entry = round(ltp * (1 + LIMIT_ORDER_OFFSET_PCT), 2)
             target = rec.get("target1") or rec.get("target") or entry * 1.02
             sl = rec.get("sl") or entry * 0.99
             # Ensure target above entry, SL below
@@ -156,6 +163,8 @@ class IntradayAgent:
                 sl = entry * 0.99
         elif is_bearish:
             trade_type = "SELL"
+            # Limit order: entry at LTP - 0.1% (slightly below to fill)
+            entry = round(ltp * (1 - LIMIT_ORDER_OFFSET_PCT), 2)
             target = rec.get("target1") or rec.get("target") or entry * 0.98
             sl = rec.get("sl") or entry * 1.01
             # Ensure target below entry, SL above
@@ -187,8 +196,8 @@ class IntradayAgent:
                 )
                 if resp.status_code == 200:
                     self.trades_today += 1
-                    self.log_action("TRADE_PLACED", symbol,
-                        f"{trade_type} @ {entry} | T: {round(target,2)} | SL: {round(sl,2)} | Qty: {quantity}")
+                    self.log_action("LIMIT_ORDER_PLACED", symbol,
+                        f"{trade_type} @ {entry} (LTP: {ltp}, +0.1% offset) | T: {round(target,2)} | SL: {round(sl,2)} | Qty: {quantity}")
                     return True
                 else:
                     detail = resp.text[:200]
@@ -209,19 +218,120 @@ class IntradayAgent:
             self.log_action("SQUARE_OFF_ERROR", detail=str(e))
         return False
 
+    def _get_signal_direction(self, direction: str) -> str:
+        """Normalize direction into 'BULLISH', 'BEARISH', or 'NEUTRAL'."""
+        if direction in ["UP", "Strong Up"]:
+            return "BULLISH"
+        if direction in ["DOWN", "Strong Down"]:
+            return "BEARISH"
+        return "NEUTRAL"
+
+    def _get_trade_direction(self, trade: Dict) -> str:
+        """Get the direction of an active trade: 'BULLISH' for BUY, 'BEARISH' for SELL."""
+        t_type = trade.get("type", "BUY")
+        return "BEARISH" if t_type == "SELL" else "BULLISH"
+
+    async def close_trade_by_symbol(self, symbol: str, reason: str = "Trend Reversal") -> bool:
+        """Close an active trade for a symbol via the trading service API."""
+        try:
+            # Fetch latest portfolio to get current price
+            portfolio = await self.fetch_portfolio()
+            if not portfolio:
+                return False
+            trade = next((t for t in portfolio.get("active_trades", []) if t["symbol"] == symbol), None)
+            if not trade:
+                return False
+            # Use current_price from the trade (updated by price monitor every 5s)
+            exit_price = trade.get("current_price") or trade.get("entry_price", 0)
+            if exit_price <= 0:
+                exit_price = trade.get("entry_price", 0)
+
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"{TRADING_SERVICE_URL}/trade/close-by-symbol/{symbol}",
+                    params={"price": exit_price, "reason": reason}
+                )
+                if resp.status_code == 200:
+                    self.log_action("TREND_EXIT", symbol,
+                        f"Closed @ {exit_price} | Reason: {reason}")
+                    return True
+                else:
+                    self.log_action("TREND_EXIT_FAILED", symbol, resp.text[:200])
+        except Exception as e:
+            self.log_action("TREND_EXIT_ERROR", symbol, str(e))
+        return False
+
+    async def update_trailing_sl(self, trade: Dict) -> bool:
+        """Adjust the stop-loss closer to the current price to lock in profits."""
+        trade_id = trade.get("id", "")
+        symbol = trade.get("symbol", "")
+        current_price = trade.get("current_price", 0) or 0
+        entry_price = trade.get("entry_price", 0)
+        old_sl = trade.get("stop_loss", 0)
+        trade_type = trade.get("type", "BUY")
+
+        if current_price <= 0 or entry_price <= 0:
+            return False
+
+        if trade_type == "SELL":
+            # SHORT: price moved down in our favor → trail SL down
+            # New SL = current_price + 0.5% buffer (above current price)
+            profit_move = entry_price - current_price
+            if profit_move <= 0:
+                return False  # Not in profit
+            new_sl = round(current_price * 1.005, 2)  # 0.5% above current price
+            # Only move SL if it's tighter (lower) than current SL
+            if new_sl >= old_sl:
+                return False  # Would widen SL, not tighten
+        else:
+            # LONG/BUY: price moved up in our favor → trail SL up
+            profit_move = current_price - entry_price
+            if profit_move <= 0:
+                return False  # Not in profit
+            new_sl = round(current_price * 0.995, 2)  # 0.5% below current price
+            # Only move SL if it's tighter (higher) than current SL
+            if new_sl <= old_sl:
+                return False  # Would widen SL, not tighten
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"{TRADING_SERVICE_URL}/trade/update-sl/{trade_id}",
+                    params={"new_sl": new_sl}
+                )
+                if resp.status_code == 200:
+                    self.log_action("TRAILING_SL_UPDATED", symbol,
+                        f"SL moved: {old_sl} → {new_sl} (price: {current_price})")
+                    return True
+        except Exception as e:
+            self.log_action("TRAILING_SL_ERROR", symbol, str(e))
+        return False
+
     async def evaluate_signal(self, rec: Dict, portfolio: Dict) -> str:
         """
         Evaluate whether to act on a signal.
-        Returns: 'ENTER', 'SKIP', or 'HOLD'
+        Returns: 'ENTER', 'SKIP', 'HOLD', or 'REVERSE'
         """
         symbol = rec.get("symbol", "")
         conviction = rec.get("conviction", 0)
         direction = rec.get("direction", "")
+        signal_dir = self._get_signal_direction(direction)
 
         # Already in position for this symbol?
-        active_symbols = {t["symbol"] for t in portfolio.get("active_trades", [])}
+        active_trades = portfolio.get("active_trades", [])
+        active_symbols = {t["symbol"] for t in active_trades}
         if symbol in active_symbols:
-            return "HOLD"  # Already trading this
+            # Check if the new signal CONTRADICTS the existing position direction
+            existing_trade = next((t for t in active_trades if t["symbol"] == symbol), None)
+            if existing_trade:
+                trade_dir = self._get_trade_direction(existing_trade)
+                if signal_dir != "NEUTRAL" and signal_dir != trade_dir:
+                    # Trend has reversed! Signal to exit and re-enter opposite
+                    if conviction >= MIN_CONVICTION_TO_TRADE:
+                        self.log_action("TREND_REVERSAL_DETECTED", symbol,
+                            f"Position: {trade_dir} → New signal: {signal_dir} (conv: {conviction:.1f}%)")
+                        return "REVERSE"
+            return "HOLD"  # Same direction, keep holding
 
         # Already processed this signal?
         sig_id = rec.get("id", symbol)
@@ -266,9 +376,7 @@ class IntradayAgent:
 
     def _daily_reset_if_needed(self):
         """Reset processed signals at the start of each new trading day."""
-        from datetime import timezone, timedelta
-        ist = timezone(timedelta(hours=5, minutes=30))
-        today = datetime.now(ist).date()
+        today = datetime.now(IST).date()
         if self._last_reset_date != today:
             self.processed_signals.clear()
             self.trades_today = 0
@@ -276,21 +384,23 @@ class IntradayAgent:
             self.log_action("DAILY_RESET", detail=f"New trading day: {today}")
 
     async def monitor_positions(self, portfolio: Dict):
-        """Monitor active positions for trailing SL, time-based exits, etc."""
+        """Monitor active positions for trailing SL adjustment.
+        When a position moves into profit beyond TRAILING_SL_TRIGGER_PCT,
+        the stop-loss is tightened closer to the current price to lock in gains.
+        """
         active_trades = portfolio.get("active_trades", [])
         for trade in active_trades:
-            # Check if position is in significant profit for trailing SL
             pnl_pct = trade.get("pnl_percent", 0) or 0
             if abs(pnl_pct) > TRAILING_SL_TRIGGER_PCT:
-                # Log for monitoring (actual trailing handled by trading service)
-                self.log_action("TRAILING_REVIEW", trade["symbol"],
-                    f"P&L: {pnl_pct:.2f}% — monitoring for trailing SL adjustment")
+                # Position is in meaningful profit — update trailing SL
+                updated = await self.update_trailing_sl(trade)
+                if not updated:
+                    self.log_action("TRAILING_REVIEW", trade["symbol"],
+                        f"P&L: {pnl_pct:.2f}% — SL already tight or not in profit direction")
 
     async def run_cycle(self):
         """Execute one agent cycle: evaluate signals, manage positions."""
-        from datetime import timezone, timedelta
-        ist = timezone(timedelta(hours=5, minutes=30))
-        self.last_check = datetime.now(ist).isoformat()
+        self.last_check = datetime.now(IST).isoformat()
 
         # Daily reset check
         self._daily_reset_if_needed()
@@ -320,16 +430,43 @@ class IntradayAgent:
         # Monitor existing positions
         await self.monitor_positions(portfolio)
 
-        # Evaluate new signals
+        # Evaluate new signals — handle ENTER, REVERSE, and HOLD
         actionable = []
+        reversals = []
         for rec in signals:
             decision = await self.evaluate_signal(rec, portfolio)
             if decision == "ENTER":
                 actionable.append(rec)
                 self.log_action("SIGNAL_ACCEPTED", rec.get("symbol", ""),
                     f"Direction: {rec.get('direction')} | Conviction: {rec.get('conviction', 0):.1f}%")
+            elif decision == "REVERSE":
+                reversals.append(rec)
 
-        # Execute trades one by one
+        # Process trend reversals first — close existing position, then re-enter
+        if reversals:
+            self.state = AgentState.EXECUTING
+            for rec in reversals:
+                symbol = rec.get("symbol", "")
+                direction = rec.get("direction", "")
+                # Step 1: Close the existing contrary position
+                closed = await self.close_trade_by_symbol(symbol, reason=f"Trend Reversal → {direction}")
+                if closed:
+                    # Step 2: Re-enter in the new direction
+                    # Need to re-fetch portfolio to get updated cash after close
+                    await asyncio.sleep(1)  # Brief pause for state sync
+                    success = await self.execute_trade(rec)
+                    if success:
+                        self.log_action("REVERSAL_COMPLETE", symbol,
+                            f"Exited old position & entered {direction}")
+                    else:
+                        self.log_action("REVERSAL_PARTIAL", symbol,
+                            f"Old position closed but new {direction} entry failed")
+                else:
+                    self.log_action("REVERSAL_FAILED", symbol,
+                        f"Could not close existing position for reversal")
+            self.state = AgentState.MONITORING
+
+        # Execute new entries one by one
         if actionable:
             self.state = AgentState.EXECUTING
             for rec in actionable:
@@ -404,7 +541,9 @@ async def get_status():
 async def get_agent_trades():
     """Return actions log as pseudo-trades feed."""
     return [a.dict() for a in agent.actions_log if a.action in [
-        "SIGNAL_ACCEPTED", "TRADES_EXECUTED", "SQUARE_OFF", "TRAILING_REVIEW"
+        "SIGNAL_ACCEPTED", "TRADES_EXECUTED", "SQUARE_OFF", "TRAILING_REVIEW",
+        "TREND_REVERSAL_DETECTED", "TREND_EXIT", "REVERSAL_COMPLETE",
+        "REVERSAL_PARTIAL", "TRAILING_SL_UPDATED"
     ]]
 
 

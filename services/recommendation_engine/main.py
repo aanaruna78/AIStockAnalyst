@@ -153,28 +153,38 @@ async def generate_recommendation(request: RecommendationRequest):
     details.get("ml_model", {}).get("confidence", 0.5)
     
     # 5. Full Score Breakdown for UI
-    # Display sub-scores as directional: positive = bullish contribution, negative = bearish
-    def _directional_contrib(score_0to100, weight):
-        """Convert 0-100 score (50=neutral) to signed contribution."""
-        return round((score_0to100 - 50) * weight * 2, 1)
+    # Display sub-scores as 0-100 conviction in the determined direction
+    # For BUY: 0 = no buy conviction, 100 = max buy conviction
+    # For SELL: 0 = no sell conviction, 100 = max sell conviction
+    def _component_conviction(score_0to100, direction):
+        """Convert 0-100 score (50=neutral) to 0-100 conviction in the given direction."""
+        if direction == "UP":
+            # >50 is bullish, map 50→0, 100→100
+            return round(max(0, (score_0to100 - 50) * 2), 1)
+        else:
+            # <50 is bearish, map 50→0, 0→100
+            return round(max(0, (50 - score_0to100) * 2), 1)
     
     scores = {
-        "Sentiment": _directional_contrib(details.get("sentiment_score", 50), weights.get("sentiment", settings.BASE_WEIGHT_SENTIMENT)),
-        "Technical": _directional_contrib(details.get("technical_score", 50), weights.get("technical_rules", settings.BASE_WEIGHT_TECHNICAL)),
-        "AI Model": _directional_contrib((details.get("ml_model", {}).get("probability", 0.5)) * 100, weights.get("ml_xgboost", settings.BASE_WEIGHT_ML)),
-        "Fundamental": _directional_contrib(details.get("fundamental_score", 50), weights.get("fundamental", settings.BASE_WEIGHT_FUNDAMENTAL)),
-        "Analyst": _directional_contrib(details.get("analyst_score", 50), weights.get("analyst_ratings", settings.BASE_WEIGHT_ANALYST))
+        "Sentiment": _component_conviction(details.get("sentiment_score", 50), direction),
+        "Technical": _component_conviction(details.get("technical_score", 50), direction),
+        "AI Model": _component_conviction((details.get("ml_model", {}).get("probability", 0.5)) * 100, direction),
+        "Fundamental": _component_conviction(details.get("fundamental_score", 50), direction),
+        "Analyst": _component_conviction(details.get("analyst_score", 50), direction)
     }
-    logger.info(f"Score Breakdown for {request.symbol} ({direction}): {scores}")
+    logger.info(f"Score Breakdown for {request.symbol} ({direction}): {scores} (0-100 scale, higher = stronger {direction} conviction)")
     
     rationale_text += f"Signal: {dir_label} | AI Confidence: {round(conviction)}% ({conf_level}), "
     
-    # Identify top driver by absolute contribution
-    top_driver = max(scores, key=lambda k: abs(scores[k]))
+    # Identify top driver by highest conviction score
+    top_driver = max(scores, key=lambda k: scores[k])
     driver_val = scores[top_driver]
-    driver_dir = "bullish" if driver_val > 0 else "bearish"
+    dir_word = "bullish" if direction == "UP" else "bearish"
     
-    rationale_text += f"driven primarily by {top_driver} signals ({driver_val:+.1f}% {driver_dir} contribution). "
+    if driver_val > 0:
+        rationale_text += f"driven primarily by {top_driver} signals ({driver_val:.0f}% {dir_word} conviction). "
+    else:
+        rationale_text += f"marginal {dir_word} lean across multiple indicators. "
     
     # Technical Key Details
     rsi = request.indicators.get("rsi", "N/A")

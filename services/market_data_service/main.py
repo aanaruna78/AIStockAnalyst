@@ -8,6 +8,7 @@ from dhan_client import dhan_client
 from ohlc_service import ohlc_service
 from trading_calendar import trading_calendar
 from datetime import datetime
+import pytz
 import logging
 
 app = FastAPI(title="SignalForge Market Data Service")
@@ -37,10 +38,11 @@ async def get_ohlc(symbol: str, interval: str = "1D", days: int = 30):
 @app.get("/calendar/is-trading-day")
 async def check_trading_day(date: str = None):
     """Check if a date is a trading day"""
+    ist = pytz.timezone("Asia/Kolkata")
     if date:
         dt = datetime.fromisoformat(date)
     else:
-        dt = datetime.now()
+        dt = datetime.now(ist)
     
     is_trading = trading_calendar.is_trading_day(dt)
     is_open = trading_calendar.is_market_open(dt)
@@ -54,10 +56,11 @@ async def check_trading_day(date: str = None):
 @app.get("/calendar/next-trading-day")
 async def get_next_trading_day(date: str = None):
     """Get the next trading day"""
+    ist = pytz.timezone("Asia/Kolkata")
     if date:
         dt = datetime.fromisoformat(date)
     else:
-        dt = datetime.now()
+        dt = datetime.now(ist)
     
     next_day = trading_calendar.next_trading_day(dt)
     return {

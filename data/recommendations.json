@@ -985,7 +985,7 @@
     "vix_multiplier": 1.0,
     "id": "TCS_1770925517",
     "created_at": "2026-02-12T19:45:17.613226",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-12T23:45:17.613238"
   },
   "HDFCBANK_1770929024": {
@@ -1008,7 +1008,7 @@
     "vix_multiplier": 1.0,
     "id": "HDFCBANK_1770929024",
     "created_at": "2026-02-12T20:43:44.839889",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T00:43:44.839896"
   },
   "INFY_1770929026": {
@@ -2779,7 +2779,7 @@
     "vix_multiplier": 1.0,
     "id": "ICICIBANK_1770954178",
     "created_at": "2026-02-13T03:42:58.075018",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T07:42:58.075021"
   },
   "SBIN_1770954180": {
@@ -4320,7 +4320,7 @@
     "vix_multiplier": 1.0,
     "id": "RELIANCE_1770976374",
     "created_at": "2026-02-13T09:52:54.770963",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T13:52:54.770965"
   },
   "INFY_1770976380": {
@@ -4366,7 +4366,7 @@
     "vix_multiplier": 1.0,
     "id": "BHARTIARTL_1770976385",
     "created_at": "2026-02-13T09:53:05.928528",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T13:53:05.928535"
   },
   "SBIN_1770976387": {
@@ -4389,7 +4389,7 @@
     "vix_multiplier": 1.0,
     "id": "SBIN_1770976387",
     "created_at": "2026-02-13T09:53:07.750165",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T13:53:07.750168"
   },
   "LICI_1770976389": {
@@ -4412,7 +4412,7 @@
     "vix_multiplier": 1.0,
     "id": "LICI_1770976389",
     "created_at": "2026-02-13T09:53:09.596938",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T13:53:09.596940"
   },
   "ITC_1770976391": {
@@ -4435,7 +4435,7 @@
     "vix_multiplier": 1.0,
     "id": "ITC_1770976391",
     "created_at": "2026-02-13T09:53:11.564492",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-13T13:53:11.564496"
   },
   "HCLTECH_1771048298": {
@@ -4644,5 +4644,419 @@
     "created_at": "2026-02-14T05:52:42.403582",
     "status": "active",
     "expires_at": "2026-02-14T09:52:42.403595"
+  },
+  "TCS_1771225113": {
+    "symbol": "TCS",
+    "direction": "UP",
+    "conviction": 34.75,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 35% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (87% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Community discussion on Reddit. Revenue Growth: 2.4% YoY. Net Margin: 18.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 20.41372960004946 (Sector 24.793939933413867), PB 10.170735625564733\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has a good return on equity (ROE) track record: 3 Years ROE 58.9%; Company has been maintaining a healthy dividend payout of 87.7%\n- Weaknesses: Stock is trading at 11.4 times its book value; The company has delivered a poor sales growth of 10.4% over past five years.\n- Efficiency: ROCE 78.4%, ROE 65.0%\n",
+    "score_breakdown": {
+      "Sentiment": 87.2,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 24.0,
+      "Analyst": 0
+    },
+    "entry": 3142.25,
+    "target1": 3402.76,
+    "target2": 3533.01,
+    "sl": 3012.0,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "TCS_1771225113",
+    "created_at": "2026-02-16T06:58:33.483375",
+    "status": "active",
+    "expires_at": "2026-02-16T10:58:33.483378"
+  },
+  "HDFCBANK_1771225116": {
+    "symbol": "HDFCBANK",
+    "direction": "DOWN",
+    "conviction": 36.08,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 5.9% YoY. Net Margin: 14.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 18.66757529793897 (Sector 18.361339884928462), PB 2.5846451238949273\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 20.7% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 24.5%\n- Weaknesses: Stock is trading at 2.61 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 7.35%, ROE 14.3%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 20.0,
+      "Analyst": 0
+    },
+    "entry": 922.38,
+    "target1": 851.26,
+    "target2": 815.7,
+    "sl": 957.94,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "HDFCBANK_1771225116",
+    "created_at": "2026-02-16T06:58:36.541763",
+    "status": "replaced",
+    "expires_at": "2026-02-16T10:58:36.541766"
+  },
+  "BHARTIARTL_1771225123": {
+    "symbol": "BHARTIARTL",
+    "direction": "DOWN",
+    "conviction": 36.5,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.1% YoY. Net Margin: 14.7%.\n\n**Fundamental Analysis**\n- Metrics: PE 39.640155705891345 (Sector 110.37357862931628), PB 7.850118612567204\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 19.8% CAGR over last 5 years\n- Weaknesses: Stock is trading at 8.24 times its book value; Promoter holding has decreased over last quarter: -1.40%\n- Efficiency: ROCE 8.18%, ROE 11.4%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 22.0,
+      "Analyst": 0
+    },
+    "entry": 634.64,
+    "target1": 585.71,
+    "target2": 561.24,
+    "sl": 659.11,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "BHARTIARTL_1771225123",
+    "created_at": "2026-02-16T06:58:43.155913",
+    "status": "replaced",
+    "expires_at": "2026-02-16T10:58:43.155925"
+  },
+  "SBIN_1771225125": {
+    "symbol": "SBIN",
+    "direction": "UP",
+    "conviction": 38.33,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 38% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (100% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Moneycontrol Analyst (Positive). Revenue Growth: 7.2% YoY. Net Margin: 11.5%.\n\n**Fundamental Analysis**\n- Metrics: PE 13.547347850743112 (Sector 18.361339884928462), PB 2.1905835511438796\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #ff5f56; font-weight: bold;\">Bad</span>\n- Strengths: Company has delivered good profit growth of 37.4% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 20.0%\n- Weaknesses: Company has low interest coverage ratio.; Contingent liabilities of Rs.27,32,684 Cr.\n- Efficiency: ROCE 6.37%, ROE 17.3%\n",
+    "score_breakdown": {
+      "Sentiment": 100.0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 0,
+      "Analyst": 0
+    },
+    "entry": 748.06,
+    "target1": 810.08,
+    "target2": 841.09,
+    "sl": 717.05,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "SBIN_1771225125",
+    "created_at": "2026-02-16T06:58:45.311945",
+    "status": "active",
+    "expires_at": "2026-02-16T10:58:45.311947"
+  },
+  "LICI_1771225127": {
+    "symbol": "LICI",
+    "direction": "DOWN",
+    "conviction": 24.66,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 25% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 3.0% YoY. Net Margin: 18.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 5.091392932679861 (Sector 18.361339884928462), PB 0.7680802220901314\n- Scorecard: Valuation <span style=\"color: #27c93f; font-weight: bold;\">Low</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 77.5% CAGR over last 5 years; Company has a good return on equity (ROE) track record: 3 Years ROE 63.7%\n- Weaknesses: The company has delivered a poor sales growth of 7.56% over past five years.\n- Efficiency: ROCE 53.4%, ROE 46.0%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 0,
+      "Analyst": 0
+    },
+    "entry": 201.52,
+    "target1": 185.98,
+    "target2": 178.2,
+    "sl": 209.29,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "LICI_1771225127",
+    "created_at": "2026-02-16T06:58:47.380132",
+    "status": "replaced",
+    "expires_at": "2026-02-16T10:58:47.380134"
+  },
+  "ITC_1771225129": {
+    "symbol": "ITC",
+    "direction": "UP",
+    "conviction": 36.83,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 37% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.7% YoY. Net Margin: 36.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 11.22230239881775 (Sector 34.261304438212164), PB 5.5840351554161245\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: The company has delivered a poor sales growth of 8.73% over past five years.; Earnings include an other income of Rs.17,929 Cr.\n- Efficiency: ROCE 36.9%, ROE 27.9%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 62.0,
+      "Analyst": 0
+    },
+    "entry": 448.84,
+    "target1": 486.05,
+    "target2": 504.66,
+    "sl": 430.23,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ITC_1771225129",
+    "created_at": "2026-02-16T06:58:49.901590",
+    "status": "replaced",
+    "expires_at": "2026-02-16T10:58:49.901596"
+  },
+  "HDFCBANK_1771225707": {
+    "symbol": "HDFCBANK",
+    "direction": "DOWN",
+    "conviction": 36.08,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 5.9% YoY. Net Margin: 14.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 18.66757529793897 (Sector 18.361339884928462), PB 2.5846451238949273\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 20.7% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 24.5%\n- Weaknesses: Stock is trading at 2.61 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 7.35%, ROE 14.3%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 20.0,
+      "Analyst": 0
+    },
+    "entry": 922.38,
+    "target1": 851.26,
+    "target2": 815.7,
+    "sl": 957.94,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "HDFCBANK_1771225707",
+    "created_at": "2026-02-16T07:08:27.099433",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:08:27.099442"
+  },
+  "BHARTIARTL_1771225713": {
+    "symbol": "BHARTIARTL",
+    "direction": "DOWN",
+    "conviction": 36.5,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.1% YoY. Net Margin: 14.7%.\n\n**Fundamental Analysis**\n- Metrics: PE 39.640155705891345 (Sector 110.37357862931628), PB 7.850118612567204\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 19.8% CAGR over last 5 years\n- Weaknesses: Stock is trading at 8.24 times its book value; Promoter holding has decreased over last quarter: -1.40%\n- Efficiency: ROCE 8.18%, ROE 11.4%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 22.0,
+      "Analyst": 0
+    },
+    "entry": 634.64,
+    "target1": 585.71,
+    "target2": 561.24,
+    "sl": 659.11,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "BHARTIARTL_1771225713",
+    "created_at": "2026-02-16T07:08:33.800866",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:08:33.800868"
+  },
+  "LICI_1771225718": {
+    "symbol": "LICI",
+    "direction": "DOWN",
+    "conviction": 24.66,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 25% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 3.0% YoY. Net Margin: 18.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 5.091392932679861 (Sector 18.361339884928462), PB 0.7680802220901314\n- Scorecard: Valuation <span style=\"color: #27c93f; font-weight: bold;\">Low</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 77.5% CAGR over last 5 years; Company has a good return on equity (ROE) track record: 3 Years ROE 63.7%\n- Weaknesses: The company has delivered a poor sales growth of 7.56% over past five years.\n- Efficiency: ROCE 53.4%, ROE 46.0%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 0,
+      "Analyst": 0
+    },
+    "entry": 201.52,
+    "target1": 185.98,
+    "target2": 178.2,
+    "sl": 209.29,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "LICI_1771225718",
+    "created_at": "2026-02-16T07:08:38.156136",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:08:38.156144"
+  },
+  "ITC_1771225720": {
+    "symbol": "ITC",
+    "direction": "UP",
+    "conviction": 36.83,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 37% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.7% YoY. Net Margin: 36.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 11.22230239881775 (Sector 34.261304438212164), PB 5.5840351554161245\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: The company has delivered a poor sales growth of 8.73% over past five years.; Earnings include an other income of Rs.17,929 Cr.\n- Efficiency: ROCE 36.9%, ROE 27.9%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 62.0,
+      "Analyst": 0
+    },
+    "entry": 448.84,
+    "target1": 486.05,
+    "target2": 504.66,
+    "sl": 430.23,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ITC_1771225720",
+    "created_at": "2026-02-16T07:08:40.410920",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:08:40.410923"
+  },
+  "HDFCBANK_1771226910": {
+    "symbol": "HDFCBANK",
+    "direction": "DOWN",
+    "conviction": 36.08,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 5.9% YoY. Net Margin: 14.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 18.66757529793897 (Sector 18.361339884928462), PB 2.5846451238949273\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 20.7% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 24.5%\n- Weaknesses: Stock is trading at 2.61 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 7.35%, ROE 14.3%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 20.0,
+      "Analyst": 0
+    },
+    "entry": 922.38,
+    "target1": 851.26,
+    "target2": 815.7,
+    "sl": 957.94,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "HDFCBANK_1771226910",
+    "created_at": "2026-02-16T07:28:30.539149",
+    "status": "active",
+    "expires_at": "2026-02-16T11:28:30.539195"
+  },
+  "BHARTIARTL_1771226917": {
+    "symbol": "BHARTIARTL",
+    "direction": "DOWN",
+    "conviction": 36.5,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.1% YoY. Net Margin: 14.7%.\n\n**Fundamental Analysis**\n- Metrics: PE 39.640155705891345 (Sector 110.37357862931628), PB 7.850118612567204\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 19.8% CAGR over last 5 years\n- Weaknesses: Stock is trading at 8.24 times its book value; Promoter holding has decreased over last quarter: -1.40%\n- Efficiency: ROCE 8.18%, ROE 11.4%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 22.0,
+      "Analyst": 0
+    },
+    "entry": 634.64,
+    "target1": 585.71,
+    "target2": 561.24,
+    "sl": 659.11,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "BHARTIARTL_1771226917",
+    "created_at": "2026-02-16T07:28:37.241768",
+    "status": "active",
+    "expires_at": "2026-02-16T11:28:37.241770"
+  },
+  "LICI_1771226921": {
+    "symbol": "LICI",
+    "direction": "DOWN",
+    "conviction": 24.66,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 25% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 3.0% YoY. Net Margin: 18.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 5.091392932679861 (Sector 18.361339884928462), PB 0.7680802220901314\n- Scorecard: Valuation <span style=\"color: #27c93f; font-weight: bold;\">Low</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 77.5% CAGR over last 5 years; Company has a good return on equity (ROE) track record: 3 Years ROE 63.7%\n- Weaknesses: The company has delivered a poor sales growth of 7.56% over past five years.\n- Efficiency: ROCE 53.4%, ROE 46.0%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 0,
+      "Analyst": 0
+    },
+    "entry": 201.52,
+    "target1": 185.98,
+    "target2": 178.2,
+    "sl": 209.29,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "LICI_1771226921",
+    "created_at": "2026-02-16T07:28:41.673785",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:28:41.673791"
+  },
+  "ITC_1771226923": {
+    "symbol": "ITC",
+    "direction": "UP",
+    "conviction": 36.83,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 37% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.7% YoY. Net Margin: 36.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 11.22230239881775 (Sector 34.261304438212164), PB 5.5840351554161245\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: The company has delivered a poor sales growth of 8.73% over past five years.; Earnings include an other income of Rs.17,929 Cr.\n- Efficiency: ROCE 36.9%, ROE 27.9%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 62.0,
+      "Analyst": 0
+    },
+    "entry": 448.84,
+    "target1": 486.05,
+    "target2": 504.66,
+    "sl": 430.23,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ITC_1771226923",
+    "created_at": "2026-02-16T07:28:43.951550",
+    "status": "replaced",
+    "expires_at": "2026-02-16T11:28:43.951553"
+  },
+  "RELIANCE_1771236503": {
+    "symbol": "RELIANCE",
+    "direction": "DOWN",
+    "conviction": 41.15,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 41% (<span style=\"color: #ffbd2e; font-weight: bold;\">Medium</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 7.3% YoY. Net Margin: 7.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 23.08672909979017 (Sector 19.51679067392315), PB 1.9027539060232599\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Weaknesses: Stock is trading at 3.43 times its book value; The company has delivered a poor sales growth of 8.93% over past five years.\n- Efficiency: ROCE 7.57%, ROE 6.61%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 44.0,
+      "Analyst": 0
+    },
+    "entry": 1403.62,
+    "target1": 1295.38,
+    "target2": 1241.26,
+    "sl": 1457.74,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "RELIANCE_1771236503",
+    "created_at": "2026-02-16T10:08:23.266008",
+    "status": "active",
+    "expires_at": "2026-02-16T14:08:23.266011"
+  },
+  "ICICIBANK_1771236513": {
+    "symbol": "ICICIBANK",
+    "direction": "DOWN",
+    "conviction": 35.65,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 36% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 100.0 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.3% YoY. Net Margin: 17.2%.\n\n**Fundamental Analysis**\n- Metrics: PE 19.197444788351557 (Sector 18.361339884928462), PB 3.0792782576717044\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 42.9% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 17.1%\n- Weaknesses: Stock is trading at 3.15 times its book value; Company has low interest coverage ratio.\n- Efficiency: ROCE 7.61%, ROE 17.8%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 32.6,
+      "AI Model": 73.3,
+      "Fundamental": 18.0,
+      "Analyst": 0
+    },
+    "entry": 1052.72,
+    "target1": 971.55,
+    "target2": 930.96,
+    "sl": 1093.31,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ICICIBANK_1771236513",
+    "created_at": "2026-02-16T10:08:33.205119",
+    "status": "active",
+    "expires_at": "2026-02-16T14:08:33.205121"
+  },
+  "LICI_1771236519": {
+    "symbol": "LICI",
+    "direction": "UP",
+    "conviction": 30.91,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 31% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 3.0% YoY. Net Margin: 18.9%.\n\n**Fundamental Analysis**\n- Metrics: PE 5.091392932679861 (Sector 18.361339884928462), PB 0.7680802220901314\n- Scorecard: Valuation <span style=\"color: #27c93f; font-weight: bold;\">Low</span>, Profitability Avg, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has delivered good profit growth of 77.5% CAGR over last 5 years; Company has a good return on equity (ROE) track record: 3 Years ROE 63.7%\n- Weaknesses: The company has delivered a poor sales growth of 7.56% over past five years.\n- Efficiency: ROCE 53.4%, ROE 46.0%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 34.0,
+      "Analyst": 0
+    },
+    "entry": 200.48,
+    "target1": 217.1,
+    "target2": 225.4,
+    "sl": 192.17,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "LICI_1771236519",
+    "created_at": "2026-02-16T10:08:39.722418",
+    "status": "active",
+    "expires_at": "2026-02-16T14:08:39.722421"
+  },
+  "ITC_1771236521": {
+    "symbol": "ITC",
+    "direction": "UP",
+    "conviction": 36.83,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>. Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 37% (<span style=\"color: #ff5f56; font-weight: bold;\">Low</span>), driven primarily by AI Model signals (73% bullish conviction). Key Indicators: RSI is 0.0 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>), ADX 100.0 (<span style=\"color: #00e5ff; font-weight: bold;\">Trending</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.7% YoY. Net Margin: 36.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 11.22230239881775 (Sector 34.261304438212164), PB 5.5840351554161245\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: The company has delivered a poor sales growth of 8.73% over past five years.; Earnings include an other income of Rs.17,929 Cr.\n- Efficiency: ROCE 36.9%, ROE 27.9%\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 33.5,
+      "AI Model": 73.3,
+      "Fundamental": 62.0,
+      "Analyst": 0
+    },
+    "entry": 448.84,
+    "target1": 486.05,
+    "target2": 504.66,
+    "sl": 430.23,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "ITC_1771236521",
+    "created_at": "2026-02-16T10:08:41.707306",
+    "status": "active",
+    "expires_at": "2026-02-16T14:08:41.707308"
   }
 }

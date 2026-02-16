@@ -9,6 +9,7 @@ import { Shield, Users, ChevronDown, ChevronUp, Clock, Globe, LogIn, Mail } from
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import api from '../services/api';
+import AdminModelReport from './AdminModelReport';
 
 const Admin = () => {
     const { user } = useAuth();
@@ -289,6 +290,10 @@ const Admin = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <Box sx={{ my: 4 }}>
+                <AdminModelReport />
+            </Box>
         </Container>
     );
 };

@@ -152,7 +152,8 @@ const RecommendationDetail = () => {
                                     <BarChart3 size={16} /> SCORE BREAKDOWN (WEIGHTED)
                                 </Typography>
                                 <Grid container spacing={2}>
-                                    {Object.entries(rec.score_breakdown).map(([label, val]) => {
+                                    {Object.entries(rec.score_breakdown).map(([label, rawVal]) => {
+                                        const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
                                         const color = SCORE_COLORS[label] || '#94a3b8';
                                         return (
                                             <Grid item xs={12} sm={6} key={label}>
@@ -161,11 +162,11 @@ const RecommendationDetail = () => {
                                                     <Box sx={{ flex: 1 }}>
                                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                                             <Typography variant="body2" fontWeight={600}>{label}</Typography>
-                                                            <Typography variant="body2" fontWeight={800} sx={{ color: val > 0 ? '#10b981' : val < 0 ? '#ef4444' : 'text.secondary' }}>
-                                                                {val > 0 ? '+' : ''}{Math.round(val)}%
+                                                            <Typography variant="body2" fontWeight={800} sx={{ color: val >= 50 ? '#10b981' : val >= 20 ? '#f59e0b' : 'text.secondary' }}>
+                                                                {Math.round(val)}%
                                                             </Typography>
                                                         </Box>
-                                                        <LinearProgress variant="determinate" value={Math.min(Math.abs(val), 100)}
+                                                        <LinearProgress variant="determinate" value={Math.min(val, 100)}
                                                             sx={{ height: 4, borderRadius: 2, bgcolor: alpha(color, 0.1), '& .MuiLinearProgress-bar': { bgcolor: color } }} />
                                                     </Box>
                                                 </Box>

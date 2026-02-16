@@ -52,3 +52,62 @@ async def reset_portfolio():
             return resp.json()
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+@router.post("/portfolio/clear-history")
+async def clear_trade_history():
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(f"{TRADING_SERVICE_URL}/portfolio/clear-history")
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+
+# ─── Model Performance Report & Feedback (Admin) ───────────────
+
+@router.get("/model/report")
+async def get_model_report():
+    """Get today's model performance report (generates fresh)."""
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{TRADING_SERVICE_URL}/model/report", timeout=15)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+@router.get("/model/failed-trades")
+async def get_failed_trades():
+    """Get all failed trades with stats."""
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{TRADING_SERVICE_URL}/model/failed-trades", timeout=15)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+@router.post("/model/feedback")
+async def submit_model_feedback(request: Request):
+    """Submit admin feedback for model improvement."""
+    body = await request.json()
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(f"{TRADING_SERVICE_URL}/model/feedback", json=body, timeout=10)
+            if resp.status_code >= 400:
+                raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")
+
+@router.get("/model/feedback")
+async def get_model_feedback():
+    """Get all stored feedback."""
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(f"{TRADING_SERVICE_URL}/model/feedback", timeout=10)
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.RequestError:
+            raise HTTPException(status_code=503, detail="Trading Service Unavailable")

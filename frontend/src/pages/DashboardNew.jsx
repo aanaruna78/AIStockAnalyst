@@ -209,12 +209,13 @@ const SignalCard = ({ rec, onViewReport }) => {
                     {/* Sub-scores */}
                     {rec.score_breakdown && (
                         <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-                            {Object.entries(rec.score_breakdown).map(([label, val]) => {
+                            {Object.entries(rec.score_breakdown).map(([label, rawVal]) => {
+                                const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
                                 const color = SCORE_COLORS[label] || '#94a3b8';
                                 return (
-                                    <Tooltip key={label} title={`${label}: ${val > 0 ? '+' : ''}${Math.round(val)}%`}>
+                                    <Tooltip key={label} title={`${label}: ${Math.round(val)}% conviction`}>
                                         <Chip size="small"
-                                            label={<span><b style={{ color }}>{label[0]}</b><span style={{ color: val > 0 ? '#10b981' : val < 0 ? '#ef4444' : '#94a3b8', marginLeft: 2 }}>{val > 0 ? '+' : ''}{Math.round(val)}</span></span>}
+                                            label={<span><b style={{ color }}>{label[0]}</b><span style={{ color: val >= 50 ? '#10b981' : val >= 20 ? '#f59e0b' : '#94a3b8', marginLeft: 2 }}>{Math.round(val)}</span></span>}
                                             sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, bgcolor: alpha(color, 0.08), border: `1px solid ${alpha(color, 0.15)}`, '& .MuiChip-label': { px: 0.75 } }}
                                         />
                                     </Tooltip>
@@ -465,16 +466,19 @@ const Dashboard = () => {
                                         <BarChart3 size={14} /> SCORE BREAKDOWN
                                     </Typography>
                                     <Grid container spacing={1}>
-                                        {Object.entries(selectedRec.score_breakdown).map(([label, val]) => (
+                                        {Object.entries(selectedRec.score_breakdown).map(([label, rawVal]) => {
+                                            const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
+                                            return (
                                             <Grid size={4} key={label}>
                                                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                                                     <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.5rem' }}>{label}</Typography>
-                                                    <Typography variant="body2" fontWeight={800} sx={{ color: val > 0 ? '#10b981' : val < 0 ? '#ef4444' : 'text.secondary' }}>
-                                                        {val > 0 ? '+' : ''}{Math.round(val)}%
+                                                    <Typography variant="body2" fontWeight={800} sx={{ color: val >= 50 ? '#10b981' : val >= 20 ? '#f59e0b' : 'text.secondary' }}>
+                                                        {Math.round(val)}%
                                                     </Typography>
                                                 </Box>
                                             </Grid>
-                                        ))}
+                                            );
+                                        })}
                                     </Grid>
                                 </Box>
                             )}

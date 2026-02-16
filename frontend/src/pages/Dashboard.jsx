@@ -493,7 +493,8 @@ const Dashboard = () => {
                                                 {/* Mini Score Breakdown Component Badges */}
                                                 {rec.score_breakdown && (
                                                     <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
-                                                        {Object.entries(rec.score_breakdown).map(([label, val]) => {
+                                                        {Object.entries(rec.score_breakdown).map(([label, rawVal]) => {
+                                                            const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
                                                             const colorMap = {
                                                                 'Sentiment': '#00e5ff',   // Cyan
                                                                 'Technical': '#ffbd2e',   // Orange
@@ -502,14 +503,15 @@ const Dashboard = () => {
                                                                 'Analyst': '#ff5f56'      // Red
                                                             };
                                                             const color = colorMap[label] || 'rgba(255,255,255,0.4)';
+                                                            const strength = val >= 60 ? 'Strong' : val >= 30 ? 'Moderate' : val > 0 ? 'Weak' : 'Neutral';
 
                                                             return (
-                                                                <Tooltip key={label} title={`${label}: ${val > 0 ? '+' : ''}${Math.round(val)}% ${val > 0 ? 'bullish' : val < 0 ? 'bearish' : 'neutral'}`}>
+                                                                <Tooltip key={label} title={`${label}: ${Math.round(val)}% conviction (${strength})`}>
                                                                     <Chip
                                                                         label={
                                                                             <span>
                                                                                 <b style={{ color: color }}>{label[0]}</b>
-                                                                                <span style={{ opacity: 0.8, marginLeft: '1px', color: val > 0 ? '#27c93f' : val < 0 ? '#ff5f56' : 'inherit' }}>:{val > 0 ? '+' : ''}{Math.round(val)}%</span>
+                                                                                <span style={{ opacity: 0.8, marginLeft: '1px', color: val >= 50 ? '#27c93f' : val >= 20 ? '#ffbd2e' : 'inherit' }}>:{Math.round(val)}%</span>
                                                                             </span>
                                                                         }
                                                                         size="small"
@@ -606,14 +608,17 @@ const Dashboard = () => {
                                         <TrendingUp size={16} /> SUB-SCORE BREAKDOWN (WEIGHTED)
                                     </Typography>
                                     <Grid container spacing={1}>
-                                        {Object.entries(selectedRationale.score_breakdown).map(([label, val]) => (
+                                        {Object.entries(selectedRationale.score_breakdown).map(([label, rawVal]) => {
+                                            const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
+                                            return (
                                             <Grid key={label} size={4}>
                                                 <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'background.default', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
                                                     <Typography variant="caption" color="text.secondary" fontWeight={700} display="block" sx={{ fontSize: '0.55rem', mb: 0.5 }}>{label.toUpperCase()}</Typography>
-                                                    <Typography variant="body2" fontWeight={900} sx={{ color: val > 0 ? '#27c93f' : val < 0 ? '#ff5f56' : 'primary.main' }}>{val > 0 ? '+' : ''}{Math.round(val)}%</Typography>
+                                                    <Typography variant="body2" fontWeight={900} sx={{ color: val >= 50 ? '#27c93f' : val >= 20 ? '#ffbd2e' : 'text.secondary' }}>{Math.round(val)}%</Typography>
                                                 </Box>
                                             </Grid>
-                                        ))}
+                                            );
+                                        })}
                                     </Grid>
                                 </Box>
                             )}

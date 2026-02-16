@@ -270,55 +270,115 @@ const Portfolio = () => {
             </TableContainer>
 
             {/* Trade History */}
-            <Typography variant="h6" fontWeight={800} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <History size={20} /> Trade History
-            </Typography>
-            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-                <Table>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <History size={20} /> Trade History
+                    {portfolio.trade_history.length > 0 && (
+                        <Chip label={portfolio.trade_history.length} size="small" sx={{ fontWeight: 700, ml: 1 }} />
+                    )}
+                </Typography>
+                {portfolio.trade_history.length > 0 && (
+                    <Button
+                        size="small"
+                        color="error"
+                        variant="text"
+                        onClick={async () => {
+                            if (!window.confirm('Clear all trade history? This cannot be undone.')) return;
+                            try {
+                                const token = localStorage.getItem('token');
+                                let authHeaders = {};
+                                if (token) authHeaders['Authorization'] = 'Bearer ' + token;
+                                await axios.post(`${config.API_BASE_URL}/trading/portfolio/clear-history`, {}, { headers: authHeaders });
+                                await fetchPortfolio();
+                            } catch (err) { console.error('Clear history failed:', err); }
+                        }}
+                        sx={{ fontSize: '0.75rem' }}
+                    >
+                        Clear History
+                    </Button>
+                )}
+            </Box>
+            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3, overflowX: 'auto' }}>
+                <Table sx={{ minWidth: 700 }}>
                     <TableHead sx={{ bgcolor: 'rgba(255,255,255,0.02)' }}>
                         <TableRow>
                             <TableCell><Typography variant="caption" fontWeight={700}>SYMBOL</Typography></TableCell>
                             <TableCell><Typography variant="caption" fontWeight={700}>TYPE</Typography></TableCell>
-                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>PNL</Typography></TableCell>
-                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>EXIT PRICE</Typography></TableCell>
-                            <TableCell><Typography variant="caption" fontWeight={700}>REASON</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>QTY</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>ENTRY</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>EXIT</Typography></TableCell>
+                            <TableCell align="right"><Typography variant="caption" fontWeight={700}>P&L</Typography></TableCell>
+                            <TableCell><Typography variant="caption" fontWeight={700}>EXIT REASON</Typography></TableCell>
+                            <TableCell><Typography variant="caption" fontWeight={700}>TIME</Typography></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {portfolio.trade_history.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                                    No completed trades yet.
+                                <TableCell colSpan={8} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                                    No completed trades yet. Trades will appear here when positions are closed via target, stop-loss, trend reversal, or EOD square-off.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            portfolio.trade_history.slice().reverse().map((trade) => (
-                                <TableRow key={trade.id}>
-                                    <TableCell>
-                                        <Typography variant="body2" fontWeight={700}>{trade.symbol}</Typography>
-                                        <Typography variant="caption" color="text.secondary">{new Date(trade.exit_time).toLocaleString()}</Typography>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" fontWeight={600}>{trade.type}</Typography>
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        <Typography
-                                            variant="body2"
-                                            fontWeight={700}
-                                            sx={{ color: (trade.pnl || 0) >= 0 ? 'success.main' : 'error.main' }}
-                                        >
-                                            {(trade.pnl || 0) >= 0 ? '+' : ''}₹{trade.pnl?.toFixed(2)}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {trade.pnl_percent?.toFixed(2)}%
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell align="right">₹{trade.exit_price?.toFixed(2)}</TableCell>
-                                    <TableCell>
-                                        <Chip label={trade.rationale_summary?.split('|').pop()?.trim() || 'Closed'} size="small" sx={{ borderRadius: 1 }} />
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            portfolio.trade_history.slice().reverse().map((trade) => {
+                                const exitReason = trade.rationale_summary?.split('|').pop()?.trim() || 'Closed';
+                                const isProfit = (trade.pnl || 0) >= 0;
+                                return (
+                                    <TableRow key={trade.id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight={700}>{trade.symbol}</Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={trade.type}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: trade.type === 'BUY' ? 'rgba(39, 201, 63, 0.1)' : 'rgba(255, 95, 86, 0.1)',
+                                                    color: trade.type === 'BUY' ? 'success.main' : 'error.main',
+                                                    fontWeight: 800, borderRadius: 1
+                                                }}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="right">{trade.quantity}</TableCell>
+                                        <TableCell align="right">₹{trade.entry_price?.toFixed(2)}</TableCell>
+                                        <TableCell align="right">₹{trade.exit_price?.toFixed(2)}</TableCell>
+                                        <TableCell align="right">
+                                            <Typography
+                                                variant="body2"
+                                                fontWeight={700}
+                                                sx={{ color: isProfit ? 'success.main' : 'error.main' }}
+                                            >
+                                                {isProfit ? '+' : ''}₹{(trade.pnl || 0).toFixed(2)}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {(trade.pnl_percent || 0).toFixed(2)}%
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={exitReason}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{
+                                                    borderRadius: 1,
+                                                    maxWidth: 160,
+                                                    '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' }
+                                                }}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="caption" color="text.secondary" noWrap>
+                                                {trade.entry_time ? new Date(trade.entry_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                                {' → '}
+                                                {trade.exit_time ? new Date(trade.exit_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" display="block" noWrap>
+                                                {trade.exit_time ? new Date(trade.exit_time).toLocaleDateString() : ''}
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>
@@ -329,7 +389,7 @@ const Portfolio = () => {
                 <DialogTitle>Reset Portfolio</DialogTitle>
                 <DialogContent>
                     <DialogContentText>
-                        This will reset your paper trading portfolio to ₹1,00,000 and clear all active trades and trade history. This action cannot be undone.
+                        This will reset your paper trading portfolio to ₹1,00,000 and close all active trades. Your trade history will be preserved for reference. This action cannot be undone.
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>

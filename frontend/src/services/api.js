@@ -192,4 +192,25 @@ export const fetchAgentTrades = async () => {
     }
 };
 
+// ─── Model Performance Report (Admin) ───────────────────────────
+export const fetchModelReport = async () => {
+    const { data } = await api.get('/trading/model/report');
+    return data;
+};
+
+export const fetchFailedTrades = async () => {
+    const { data } = await api.get('/trading/model/failed-trades');
+    return data;
+};
+
+export const submitModelFeedback = async (feedback, category = 'general') => {
+    const { data } = await api.post('/trading/model/feedback', { feedback, category });
+    return data;
+};
+
+export const fetchModelFeedback = async () => {
+    const { data } = await api.get('/trading/model/feedback');
+    return data;
+};
+
 export default api;

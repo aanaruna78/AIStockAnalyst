@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
+import pytz
 import logging
 import yfinance as yf
 from shared.config import settings
@@ -15,33 +16,35 @@ class DhanClient:
         #     self.dhan = dhanhq(self.client_id, self.access_token)
         # else:
         logger.warning("Dhan credentials not configured. Using mock mode.")
-    
-    def get_live_price(self, security_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch live price for a given security"""
-        # Try yfinance first for real NSE data
-        price_data = self._get_yfinance_price(security_id)
-        if price_data:
-            return price_data
 
-        if not self.dhan:
-            return self._mock_live_price(security_id)
-        
-        try:
-            quote = self.dhan.get_quote(security_id)
-            return {
-                "symbol": security_id,
-                "ltp": quote.get("LTP"),
-                "open": quote.get("open"),
-                "high": quote.get("high"),
-                "low": quote.get("low"),
-                "close": quote.get("close"),
-                "volume": quote.get("volume"),
-                "timestamp": datetime.now().isoformat()
-            }
-        except Exception as e:
-            logger.error(f"Error fetching quote for {security_id}: {e}")
-            return None
-    
+    def get_live_price(self, security_id: str) -> Optional[Dict[str, Any]]:
+        """Fetch live price for a symbol. Tries yfinance first, then Dhan, then mock."""
+        # Try yfinance first (free, no credentials needed)
+        yf_data = self._get_yfinance_price(security_id)
+        if yf_data:
+            return yf_data
+
+        # Try Dhan API if configured
+        if self.dhan:
+            try:
+                ist = pytz.timezone("Asia/Kolkata")
+                quote = self.dhan.get_quote(security_id)
+                return {
+                    "symbol": security_id,
+                    "ltp": quote.get("LTP") or quote.get("ltp"),
+                    "open": quote.get("open"),
+                    "high": quote.get("high"),
+                    "low": quote.get("low"),
+                    "close": quote.get("close"),
+                    "volume": quote.get("volume"),
+                    "timestamp": datetime.now(ist).isoformat()
+                }
+            except Exception as e:
+                logger.error(f"Error fetching quote for {security_id}: {e}")
+
+        # Fallback to mock data
+        return self._mock_live_price(security_id)
+
     def get_historical_data(self, security_id: str, interval: str = "1D", from_date: str = None, to_date: str = None) -> Optional[List[Dict]]:
         """Fetch historical OHLC data"""
         # Try yfinance first
@@ -54,10 +57,11 @@ class DhanClient:
         
         try:
             # Dhan API expects specific date format
+            ist = pytz.timezone("Asia/Kolkata")
             if not from_date:
-                from_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+                from_date = (datetime.now(ist) - timedelta(days=30)).strftime("%Y-%m-%d")
             if not to_date:
-                to_date = datetime.now().strftime("%Y-%m-%d")
+                to_date = datetime.now(ist).strftime("%Y-%m-%d")
             
             data = self.dhan.historical_data(security_id, interval, from_date, to_date)
             return data
@@ -84,6 +88,7 @@ class DhanClient:
                 
             last_row = df.iloc[-1]
             
+            ist = pytz.timezone("Asia/Kolkata")
             return {
                 "symbol": symbol,
                 "ltp": round(last_row["Close"], 2),
@@ -92,7 +97,7 @@ class DhanClient:
                 "low": round(last_row["Low"], 2),
                 "close": round(last_row["Close"], 2), # live close
                 "volume": int(last_row["Volume"]),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now(ist).isoformat()
             }
         except Exception as e:
             logger.warning(f"yfinance failed for {symbol}: {e}")
@@ -174,6 +179,7 @@ class DhanClient:
         variation = base_price * 0.01 * (random.random() - 0.5)
         ltp = base_price + variation
         
+        ist = pytz.timezone("Asia/Kolkata")
         return {
             "symbol": security_id,
             "ltp": round(ltp, 2),
@@ -182,7 +188,7 @@ class DhanClient:
             "low": round(base_price * 0.99, 2),
             "close": round(base_price, 2),
             "volume": 1000000 + int(random.random() * 500000),
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now(ist).isoformat()
         }
     
     def _mock_historical_data(self, security_id: str, interval: str) -> List[Dict]:
@@ -192,7 +198,8 @@ class DhanClient:
         for i in range(30):
             # Days AGO: 29, 28, ..., 0
             days_ago = 29 - i
-            date = datetime.now() - timedelta(days=days_ago)
+            ist = pytz.timezone("Asia/Kolkata")
+            date = datetime.now(ist) - timedelta(days=days_ago)
             
             # Trend goes from (base_price - total_trend) to base_price
             # Total trend is 15% over 30 days

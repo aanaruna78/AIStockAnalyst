@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+
 import asyncio
 import yfinance as yf
 import sys
 import os
 import httpx
 from contextlib import asynccontextmanager
+import pytz
+from datetime import datetime
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -13,6 +16,7 @@ from trade_manager import TradeManager
 from shared.models import Portfolio
 from shared.config import settings
 from scheduler_job import start_scheduler
+from model_report import generate_daily_report, get_daily_report, save_feedback, get_all_feedback
 
 trade_manager = TradeManager()
 
@@ -35,7 +39,6 @@ async def price_monitor_loop():
             import random
             import requests
             import urllib3
-            from datetime import datetime
             
             # Disable SSL warnings for the fallback
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -105,7 +108,8 @@ async def price_monitor_loop():
             # 3. Update Trade Manager and timestamp
             if current_prices:
                 trade_manager.update_prices(current_prices)
-                trade_manager.portfolio.last_updated = datetime.now()
+                ist = pytz.timezone("Asia/Kolkata")
+                trade_manager.portfolio.last_updated = datetime.now(ist)
                 
         except Exception as e:
             print(f"[TradingService] Monitor Error: {e}")
@@ -152,6 +156,22 @@ async def place_manual_order(symbol: str, price: float, target: float, sl: float
 async def close_trade(trade_id: str, price: float):
     trade_manager.close_trade(trade_id, price, "Manual Close via API")
     return {"status": "closed"}
+
+@app.post("/trade/update-sl/{trade_id}")
+async def update_stop_loss(trade_id: str, new_sl: float):
+    """Update the stop-loss of an active trade (trailing SL)."""
+    success = trade_manager.update_stop_loss(trade_id, new_sl)
+    if not success:
+        raise HTTPException(status_code=404, detail="Trade not found")
+    return {"status": "sl_updated", "trade_id": trade_id, "new_sl": new_sl}
+
+@app.post("/trade/close-by-symbol/{symbol}")
+async def close_by_symbol(symbol: str, price: float, reason: str = "Trend Reversal"):
+    """Close all active trades for a symbol (used for trend-reversal exits)."""
+    success = trade_manager.close_by_symbol(symbol, price, reason)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"No active trades found for {symbol}")
+    return {"status": "closed", "symbol": symbol, "reason": reason}
 
 @app.post("/trade/close-all")
 async def close_all_positions():
@@ -220,7 +240,22 @@ async def close_all_positions():
 
 @app.post("/trade/execute-signals")
 async def execute_signals():
-    """Fetch recommendations and place orders"""
+    """Fetch recommendations and place orders.
+    - Only trades after 9:20 AM IST (skip first 5 min volatility)
+    - Uses limit order at +0.1% LTP offset to avoid stale prices
+    """
+    ist = pytz.timezone("Asia/Kolkata")
+    now = datetime.now(ist)
+    market_start = now.replace(hour=9, minute=20, second=0, microsecond=0)
+    
+    # === TIME GATE: No trades before 9:20 AM IST ===
+    if now < market_start:
+        print(f"[TradingService] ⏳ Too early for trades ({now.strftime('%H:%M IST')}). Waiting until 9:20 AM.")
+        return {"status": "skipped", "reason": f"Before 9:20 AM IST (current: {now.strftime('%H:%M')})"}
+    
+    # Limit order offset: +0.1% above LTP for BUY, -0.1% below LTP for SELL
+    LIMIT_ORDER_OFFSET = 0.001  # 0.1%
+    
     print("[TradingService] 🤖 Examining signals for auto-entry...")
     async with httpx.AsyncClient() as client:
         try:
@@ -234,7 +269,11 @@ async def execute_signals():
             executed_count = 0
             
             for rec in recommendations:
-                is_active = any(t.symbol == rec['symbol'] and t.status == 'OPEN' for t in trade_manager.portfolio.active_trades)
+                symbol = rec.get('symbol', '')
+                active_trade = next(
+                    (t for t in trade_manager.portfolio.active_trades if t.symbol == symbol and t.status == 'OPEN'),
+                    None
+                )
                 
                 conviction = rec.get('conviction', 0)
                 direction = rec.get('direction', 'NEUTRAL')
@@ -243,15 +282,29 @@ async def execute_signals():
                 is_bullish = direction in ['UP', 'Strong Up']
                 is_bearish = direction in ['DOWN', 'Strong Down']
                 
-                if not is_active and conviction > 10 and (is_bullish or is_bearish):
-                    entry = rec.get('entry') or rec.get('price', 0)
-                    if not entry or entry <= 0:
+                # Trend reversal detection: if we hold a position and signal flips direction
+                if active_trade and conviction > 10 and (is_bullish or is_bearish):
+                    current_dir = "BEARISH" if active_trade.type == 'SELL' else "BULLISH"
+                    new_dir = "BULLISH" if is_bullish else "BEARISH"
+                    if current_dir != new_dir:
+                        # Trend reversed — close existing position first
+                        exit_price = active_trade.current_price if active_trade.current_price and active_trade.current_price > 0 else active_trade.entry_price
+                        trade_manager.close_by_symbol(symbol, exit_price, reason=f"Trend Reversal → {direction}")
+                        print(f"[TradingService] 🔄 TREND REVERSAL for {symbol}: {current_dir} → {new_dir}")
+                        # Fall through to enter the new direction below
+                        active_trade = None  # Allow re-entry
+                
+                if not active_trade and conviction > 10 and (is_bullish or is_bearish):
+                    ltp = rec.get('entry') or rec.get('price', 0)
+                    if not ltp or ltp <= 0:
                         continue
                     
                     rec_target = rec.get('target1', 0) or rec.get('target', 0)
                     rec_sl = rec.get('sl', 0)
                     
                     if is_bullish:
+                        # Limit order: entry at LTP + 0.1% (slightly above to fill)
+                        entry = round(ltp * (1 + LIMIT_ORDER_OFFSET), 2)
                         # LONG: target MUST be above entry, SL MUST be below
                         intraday_target = entry * 1.02
                         final_target = rec_target if rec_target > entry else intraday_target
@@ -259,6 +312,8 @@ async def execute_signals():
                         final_sl = rec_sl if 0 < rec_sl < entry else intraday_sl
                         trade_type = "BUY"
                     else:
+                        # Limit order: entry at LTP - 0.1% (slightly below to fill)
+                        entry = round(ltp * (1 - LIMIT_ORDER_OFFSET), 2)
                         # SHORT: target MUST be below entry, SL MUST be above
                         intraday_target = entry * 0.98
                         final_target = rec_target if 0 < rec_target < entry else intraday_target
@@ -266,7 +321,8 @@ async def execute_signals():
                         final_sl = rec_sl if rec_sl > entry else intraday_sl
                         trade_type = "SELL"
                     
-                    trade_manager.place_order(
+                    print(f"[TradingService] 📝 Limit order {trade_type} {symbol}: LTP={ltp} → Entry={entry} (+0.1% offset)")
+                    result = trade_manager.place_order(
                         symbol=rec['symbol'],
                         entry_price=entry,
                         target=final_target,
@@ -275,7 +331,8 @@ async def execute_signals():
                         rationale=rec.get('rationale', ''),
                         trade_type=trade_type
                     )
-                    executed_count += 1
+                    if result:
+                        executed_count += 1
             
             return {"status": "success", "executed": executed_count}
             
@@ -285,16 +342,72 @@ async def execute_signals():
 
 @app.post("/portfolio/reset")
 async def reset_portfolio():
-    """Reset portfolio to initial state (₹1,00,000 fresh start)."""
+    """Reset portfolio to initial state (₹1,00,000 fresh start).
+    Keeps trade_history for audit trail. Use /portfolio/clear-history to wipe history."""
     from trade_manager import INITIAL_CAPITAL
+    # Close any active trades at entry price (no P&L impact) and move to history
+    for trade in list(trade_manager.portfolio.active_trades):
+        trade_manager.close_trade(trade.id, trade.entry_price, reason="Portfolio Reset")
     trade_manager.portfolio.cash_balance = INITIAL_CAPITAL
     trade_manager.portfolio.realized_pnl = 0.0
     trade_manager.portfolio.active_trades = []
-    trade_manager.portfolio.trade_history = []
-    trade_manager.portfolio.last_updated = datetime.now()
+    # Keep trade_history intact for audit trail
+    ist = pytz.timezone("Asia/Kolkata")
+    trade_manager.portfolio.last_updated = datetime.now(ist)
     trade_manager.save_state()
-    print(f"[TradingService] ♻️ Portfolio RESET to ₹{INITIAL_CAPITAL:,.0f}")
-    return {"status": "reset", "cash_balance": INITIAL_CAPITAL}
+    print(f"[TradingService] ♻️ Portfolio RESET to ₹{INITIAL_CAPITAL:,.0f} (history preserved: {len(trade_manager.portfolio.trade_history)} trades)")
+    return {"status": "reset", "cash_balance": INITIAL_CAPITAL, "history_kept": len(trade_manager.portfolio.trade_history)}
+
+@app.post("/portfolio/clear-history")
+async def clear_trade_history():
+    """Clear trade history (separate from reset to avoid accidental loss)."""
+    count = len(trade_manager.portfolio.trade_history)
+    trade_manager.portfolio.trade_history = []
+    trade_manager.save_state()
+    print(f"[TradingService] 🗑️ Trade history cleared ({count} trades removed)")
+    return {"status": "cleared", "trades_removed": count}
+
+
+# ─────────────────────────────────────────────────────────
+# MODEL PERFORMANCE REPORT & FEEDBACK ENDPOINTS (Admin UI)
+# ─────────────────────────────────────────────────────────
+
+@app.get("/model/report")
+async def api_model_report():
+    """Generate and return today's model performance report."""
+    report = generate_daily_report(trade_manager.portfolio.trade_history)
+    return report
+
+@app.get("/model/report/cached")
+async def api_model_report_cached():
+    """Return last cached report (fast, no recalculation)."""
+    return get_daily_report()
+
+@app.post("/model/feedback")
+async def api_model_feedback(request: Request):
+    """Accept admin feedback for model improvement."""
+    data = await request.json()
+    feedback_text = data.get("feedback", "").strip()
+    category = data.get("category", "general")
+    if not feedback_text:
+        raise HTTPException(status_code=400, detail="Feedback cannot be empty")
+    result = save_feedback(feedback_text, category)
+    return result
+
+@app.get("/model/feedback")
+async def api_get_feedback():
+    """Return all stored feedback."""
+    return get_all_feedback()
+
+@app.get("/model/failed-trades")
+async def api_failed_trades():
+    """Return all failed trades for analysis."""
+    from failed_trade_log import get_failed_trades, get_trade_failure_stats
+    return {
+        "trades": get_failed_trades(),
+        "stats": get_trade_failure_stats(),
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -18,7 +18,7 @@ class ScoringModel:
             "analyst_ratings": settings.BASE_WEIGHT_ANALYST
         }
 
-    def _get_dynamic_weights(self, regime: str, signals: List[Dict[str, Any]], ml_confidence: float) -> Dict[str, float]:
+    def _get_dynamic_weights(self, regime: str, signals: List[Dict[str, Any]], ml_confidence: float, has_analyst_data: bool = True) -> Dict[str, float]:
         """
         Adjust weights based on regime and signal metadata (Dynamic Gating).
         """
@@ -43,6 +43,15 @@ class ScoringModel:
             weights["technical_rules"] += weights["sentiment"] * 0.5
             weights["sentiment"] *= 0.5 
             sent_weight_mult = 1.0 # Trust the neutral baseline
+        
+        # Analyst gating — redistribute weight when no analyst data
+        if not has_analyst_data:
+            analyst_weight = weights["analyst_ratings"]
+            # Redistribute to Technical and Fundamental equally
+            weights["technical_rules"] += analyst_weight * 0.4
+            weights["fundamental"] += analyst_weight * 0.4
+            weights["ml_xgboost"] += analyst_weight * 0.2
+            weights["analyst_ratings"] = 0.0
             
         # ML Gating - Boost confidence to avoid killing the score
         ml_gating = max(ml_confidence, settings.ML_CONFIDENCE_FLOOR)
@@ -170,7 +179,8 @@ class ScoringModel:
             logger.error(f"Failed to fetch XGBoost: {e}")
 
         # 5. Dynamic Weighting (Fusion)
-        dyn_weights = self._get_dynamic_weights(regime, signals, ml_confidence)
+        has_analyst_data = bool(tickertape_analysis)
+        dyn_weights = self._get_dynamic_weights(regime, signals, ml_confidence, has_analyst_data)
         
         # Adjust weights if VIX is high (Less trust in ML/Technicals, more in Fundamentals/Analyst)
         if vix > settings.VIX_HIGH:
@@ -264,17 +274,54 @@ class ScoringModel:
         pros = screener_data.get("pros", [])
         cons = screener_data.get("cons", [])
         net_pros = len(pros) - len(cons)
-        score += max(-0.1, min(0.1, net_pros * 0.02))
+        score += max(-0.15, min(0.15, net_pros * 0.03))
+        
+        # Detect strong fundamental keywords in pros
+        pro_text = " ".join(pros).lower()
+        if "debt free" in pro_text or "almost debt free" in pro_text:
+            score += 0.05
+        if "good dividend" in pro_text or "dividend yield" in pro_text:
+            score += 0.03
+        if "consistent profit" in pro_text or "consistent compounding" in pro_text:
+            score += 0.03
+        
+        # Detect negative keywords in cons
+        con_text = " ".join(cons).lower()
+        if "poor sales growth" in con_text or "declining" in con_text:
+            score -= 0.03
+        if "high valuation" in con_text or "trading at" in con_text:
+            score -= 0.02
         
         # Key Metrics
         funds = screener_data.get("fundamentals", {})
+        
+        # ROCE scoring (Return on Capital Employed)
         roce = funds.get("roce")
         if roce:
             try:
-                if float(roce) > 20:
-                    score += 0.05
-                elif float(roce) > 15:
-                    score += 0.03
+                roce_val = float(roce)
+                if roce_val > 30:
+                    score += 0.10  # Exceptional ROCE
+                elif roce_val > 20:
+                    score += 0.07
+                elif roce_val > 15:
+                    score += 0.04
+                elif roce_val < 8:
+                    score -= 0.05  # Poor ROCE
+            except Exception:
+                pass
+        
+        # ROE scoring (Return on Equity)
+        roe = funds.get("roe")
+        if roe:
+            try:
+                roe_val = float(roe)
+                if roe_val > 25:
+                    score += 0.07  # Excellent ROE
+                elif roe_val > 15:
+                    score += 0.04
+                elif roe_val < 5:
+                    score -= 0.04  # Poor ROE
             except Exception:
                 pass
             
@@ -300,8 +347,10 @@ class ScoringModel:
         return "CHOP"
 
     def _calculate_continuous_technical_score(self, indicators: Dict[str, Any]) -> float:
-        """Multi-indicator technical score using RSI, MACD, Bollinger, MA trend."""
+        """Multi-indicator technical score using RSI, MACD, Bollinger, MA trend.
+        Extreme RSI values (< 20 or > 80) get amplified weight to prevent dilution."""
         scores = []
+        weights = []
         
         # 1. RSI (continuous mapping)
         rsi = indicators.get("rsi")
@@ -309,23 +358,25 @@ class ScoringModel:
             rsi = float(rsi)
             if rsi < 20:
                 scores.append(0.9)
+                weights.append(2.0)  # Double weight for extreme oversold
             elif rsi < settings.RSI_OVERSOLD:
                 scores.append(0.6 + 0.3 * (settings.RSI_OVERSOLD - rsi) / (settings.RSI_OVERSOLD - 20))
+                weights.append(1.5)  # 1.5x weight for oversold zone
             elif rsi > 80:
                 scores.append(0.1)
+                weights.append(2.0)  # Double weight for extreme overbought
             elif rsi > settings.RSI_OVERBOUGHT:
                 scores.append(0.4 - 0.3 * (rsi - settings.RSI_OVERBOUGHT) / (80 - settings.RSI_OVERBOUGHT))
+                weights.append(1.5)  # 1.5x weight for overbought zone
             else:
                 # Momentum-aware RSI scoring for intraday:
-                # RSI 30-50: bullish (recovering from oversold)
-                # RSI 50-60: neutral momentum zone (healthy trend, not extended)
-                # RSI 60-70: slightly bearish (getting extended, approaching overbought)
                 if rsi <= 50:
-                    scores.append(0.5 + (50 - rsi) * 0.005)  # 30→0.6, 50→0.5
+                    scores.append(0.5 + (50 - rsi) * 0.005)
                 elif rsi <= 60:
-                    scores.append(0.5)  # Neutral momentum zone
+                    scores.append(0.5)
                 else:
-                    scores.append(0.5 - (rsi - 60) * 0.01)  # 60→0.5, 65→0.45, 70→0.4
+                    scores.append(0.5 - (rsi - 60) * 0.01)
+                weights.append(1.0)
         
         # 2. MACD histogram direction
         macd_hist = indicators.get("macd_histogram")
@@ -335,6 +386,7 @@ class ScoringModel:
             if close > 0:
                 norm = h / close * 100  # Normalize to percentage
                 scores.append(min(0.8, max(0.2, 0.5 + norm * 0.1)))
+                weights.append(1.0)
         
         # 3. Bollinger Band position
         bb_upper = indicators.get("bb_upper")
@@ -346,16 +398,18 @@ class ScoringModel:
                 position = (float(close) - float(bb_lower)) / bb_range
                 # Near lower band = bullish, near upper band = bearish
                 scores.append(min(0.8, max(0.2, 1.0 - position)))
+                weights.append(1.0)
         
         # 4. Price vs SMA-20 trend
         sma_20 = indicators.get("sma_20")
         if sma_20 and close:
             ratio = float(close) / float(sma_20)
             scores.append(min(0.8, max(0.2, 0.5 + (ratio - 1.0) * 5)))
+            weights.append(1.0)
         
         if not scores:
             return 0.5
-        return sum(scores) / len(scores)
+        return sum(s * w for s, w in zip(scores, weights)) / sum(weights)
 
     def _calculate_risk_penalty(self, indicators: Dict[str, Any], vix: float = 0.0) -> float:
         penalty = 0.0

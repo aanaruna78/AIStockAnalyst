@@ -35,8 +35,10 @@ class TradingCalendar:
     @staticmethod
     def is_market_open(dt: datetime = None) -> bool:
         """Check if market is currently open"""
+        import pytz
         if dt is None:
-            dt = datetime.now()
+            ist = pytz.timezone("Asia/Kolkata")
+            dt = datetime.now(ist)
         
         if not TradingCalendar.is_trading_day(dt):
             return False
