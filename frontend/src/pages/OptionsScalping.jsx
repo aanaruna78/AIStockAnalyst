@@ -2,16 +2,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Box, Typography, Paper, Grid, Button, Chip, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Card, CardContent, CircularProgress,
-    Alert, Divider, IconButton, Tooltip, LinearProgress, Dialog, DialogTitle,
-    DialogContent, DialogActions, alpha, useTheme
+    Alert, IconButton, Tooltip, Dialog, DialogTitle,
+    DialogContent, DialogActions, alpha, useTheme, Switch
 } from '@mui/material';
 import {
-    TrendingUp, TrendingDown, RefreshCw, Target, Zap, DollarSign, Activity,
-    BarChart3, Clock, AlertTriangle, Play, Square, RotateCcw, ChevronUp, ChevronDown
+    RefreshCw, Zap, Activity, BarChart3, Clock, RotateCcw, Power, Radio
 } from 'lucide-react';
 import {
-    fetchOptionsSpot, fetchOptionsChain, fetchScalpSignal, fetchOptionsPortfolio,
-    fetchOptionsDailyStats, placeOptionsTrade, closeOptionsTrade, resetOptionsPortfolio
+    fetchOptionsSpot, fetchOptionsChain, fetchOptionsPortfolio,
+    fetchOptionsDailyStats, resetOptionsPortfolio, fetchAutoTradeStatus, toggleAutoTrade
 } from '../services/api';
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -24,14 +23,12 @@ const OptionsScalping = () => {
     const isDark = theme.palette.mode === 'dark';
     const intervalRef = useRef(null);
 
-    // state
     const [spot, setSpot] = useState(null);
     const [chain, setChain] = useState(null);
-    const [signal, setSignal] = useState(null);
     const [portfolio, setPortfolio] = useState(null);
     const [stats, setStats] = useState(null);
+    const [autoStatus, setAutoStatus] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [signalLoading, setSignalLoading] = useState(false);
     const [error, setError] = useState(null);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [actionLoading, setActionLoading] = useState(null);
@@ -40,16 +37,18 @@ const OptionsScalping = () => {
     const loadAll = useCallback(async () => {
         try {
             setError(null);
-            const [sp, ch, pf, st] = await Promise.all([
+            const [sp, ch, pf, st, at] = await Promise.all([
                 fetchOptionsSpot().catch(() => null),
                 fetchOptionsChain().catch(() => null),
                 fetchOptionsPortfolio().catch(() => null),
                 fetchOptionsDailyStats().catch(() => null),
+                fetchAutoTradeStatus().catch(() => null),
             ]);
             if (sp) setSpot(sp);
             if (ch) setChain(ch);
             if (pf) setPortfolio(pf);
             if (st) setStats(st);
+            if (at) setAutoStatus(at);
         } catch {
             setError('Failed to load options data');
         } finally {
@@ -57,48 +56,18 @@ const OptionsScalping = () => {
         }
     }, []);
 
-    const loadSignal = useCallback(async () => {
-        setSignalLoading(true);
-        try {
-            const sig = await fetchScalpSignal();
-            setSignal(sig);
-        } catch {
-            setSignal(null);
-        } finally {
-            setSignalLoading(false);
-        }
-    }, []);
-
     useEffect(() => {
         loadAll();
-        loadSignal();
-        intervalRef.current = setInterval(() => {
-            loadAll();
-        }, 15000);
+        intervalRef.current = setInterval(loadAll, 10000);
         return () => clearInterval(intervalRef.current);
-    }, [loadAll, loadSignal]);
+    }, [loadAll]);
 
     // ─── Actions ────────────────────────────────────────────────
-    const handlePlaceTrade = async () => {
-        if (!signal || signal.signal === 'NO_TRADE') return;
-        setActionLoading('place');
+    const handleToggleAutoTrade = async () => {
+        setActionLoading('toggle');
         try {
-            await placeOptionsTrade({
-                direction: signal.signal,
-                strike: signal.strike,
-                entry_price: signal.entry,
-                confidence: signal.confidence,
-            });
-            await loadAll();
-        } catch { /* handled by API interceptor */ }
-        setActionLoading(null);
-    };
-
-    const handleCloseTrade = async (tradeId) => {
-        setActionLoading(tradeId);
-        try {
-            await closeOptionsTrade(tradeId);
-            await loadAll();
+            const result = await toggleAutoTrade();
+            setAutoStatus(prev => prev ? { ...prev, enabled: result.enabled } : prev);
         } catch { /* handled */ }
         setActionLoading(null);
     };
@@ -113,7 +82,6 @@ const OptionsScalping = () => {
         setResetDialogOpen(false);
     };
 
-    // ─── Loading / Error ────────────────────────────────────────
     if (loading) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -128,6 +96,8 @@ const OptionsScalping = () => {
         borderRadius: 2,
     };
 
+    const isEnabled = autoStatus?.enabled ?? false;
+
     return (
         <Box sx={{ maxWidth: 1400, mx: 'auto', p: { xs: 2, md: 3 } }}>
             {/* Header */}
@@ -137,20 +107,18 @@ const OptionsScalping = () => {
                         Nifty 50 Options Scalping
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Paper trading · Weekly options · 1-lot scalping
+                        Fully automated paper trading · Weekly options · 1-lot scalping
                     </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                     <Tooltip title="Refresh">
-                        <IconButton onClick={() => { loadAll(); loadSignal(); }} size="small">
+                        <IconButton onClick={loadAll} size="small">
                             <RefreshCw size={18} />
                         </IconButton>
                     </Tooltip>
-                    <Button
-                        variant="outlined" color="warning" size="small"
+                    <Button variant="outlined" color="warning" size="small"
                         startIcon={<RotateCcw size={14} />}
-                        onClick={() => setResetDialogOpen(true)}
-                    >
+                        onClick={() => setResetDialogOpen(true)}>
                         Reset
                     </Button>
                 </Box>
@@ -160,25 +128,17 @@ const OptionsScalping = () => {
 
             {/* ─── Top Stats Row ─────────────────────────────────── */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                {/* Nifty Spot */}
-                <Grid item xs={6} md={3}>
+                <Grid item xs={6} md={2.4}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">NIFTY 50 Spot</Typography>
                             <Typography variant="h6" fontWeight={700}>
-                                {spot ? fmt(spot.price, 2) : '—'}
+                                {spot ? fmt(spot.spot || spot.price, 2) : '—'}
                             </Typography>
-                            {spot?.change != null && (
-                                <Typography variant="caption" sx={{ color: pctColor(spot.change) }}>
-                                    {spot.change > 0 ? '+' : ''}{fmt(spot.change, 2)}%
-                                </Typography>
-                            )}
                         </CardContent>
                     </Card>
                 </Grid>
-
-                {/* Capital */}
-                <Grid item xs={6} md={3}>
+                <Grid item xs={6} md={2.4}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Capital</Typography>
@@ -186,238 +146,234 @@ const OptionsScalping = () => {
                                 {portfolio ? fmtINR(portfolio.capital) : '—'}
                             </Typography>
                             {portfolio && (
-                                <Typography variant="caption" sx={{ color: pctColor(portfolio.capital - 100000) }}>
-                                    {portfolio.capital >= 100000 ? '+' : ''}{fmtINR(portfolio.capital - 100000)} P&L
+                                <Typography variant="caption" sx={{ color: pctColor(portfolio.total_pnl) }}>
+                                    {portfolio.total_pnl >= 0 ? '+' : ''}{fmtINR(portfolio.total_pnl)} P&L
                                 </Typography>
                             )}
                         </CardContent>
                     </Card>
                 </Grid>
-
-                {/* Today's Trades */}
-                <Grid item xs={6} md={3}>
+                <Grid item xs={6} md={2.4}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                            <Typography variant="caption" color="text.secondary">Today's Trades</Typography>
+                            <Typography variant="caption" color="text.secondary">Today</Typography>
                             <Typography variant="h6" fontWeight={700}>
-                                {stats ? `${stats.trades_today || 0} / 20` : '—'}
+                                {stats ? `${stats.trades || 0} / 20` : '—'}
                             </Typography>
-                            {stats?.today_pnl != null && (
-                                <Typography variant="caption" sx={{ color: pctColor(stats.today_pnl) }}>
-                                    {stats.today_pnl >= 0 ? '+' : ''}{fmtINR(stats.today_pnl)} today
+                            {stats?.pnl != null && (
+                                <Typography variant="caption" sx={{ color: pctColor(stats.pnl) }}>
+                                    {stats.pnl >= 0 ? '+' : ''}{fmtINR(stats.pnl)}
                                 </Typography>
                             )}
                         </CardContent>
                     </Card>
                 </Grid>
-
-                {/* Win Rate */}
-                <Grid item xs={6} md={3}>
+                <Grid item xs={6} md={2.4}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Win Rate</Typography>
                             <Typography variant="h6" fontWeight={700}>
-                                {stats?.win_rate != null ? `${fmt(stats.win_rate, 1)}%` : '—'}
+                                {portfolio?.stats?.win_rate != null ? `${fmt(portfolio.stats.win_rate, 1)}%` : '—'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {stats ? `${stats.wins || 0}W / ${stats.losses || 0}L` : '—'}
+                                {portfolio?.stats ? `${portfolio.stats.wins}W / ${portfolio.stats.losses}L` : '—'}
                             </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={6} md={2.4}>
+                    <Card sx={{
+                        ...cardSx,
+                        border: `1px solid ${isEnabled ? alpha('#10b981', 0.4) : alpha('#ef4444', 0.3)}`,
+                        bgcolor: isEnabled ? alpha('#10b981', 0.06) : alpha('#ef4444', 0.04),
+                    }} elevation={0}>
+                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Typography variant="caption" color="text.secondary">Auto-Trade</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Chip
+                                    icon={isEnabled ? <Radio size={12} /> : <Power size={12} />}
+                                    label={isEnabled ? 'ACTIVE' : 'OFF'}
+                                    size="small"
+                                    color={isEnabled ? 'success' : 'default'}
+                                    sx={{ fontWeight: 700 }}
+                                />
+                                <Switch
+                                    checked={isEnabled}
+                                    onChange={handleToggleAutoTrade}
+                                    size="small"
+                                    disabled={actionLoading === 'toggle'}
+                                    color="success"
+                                />
+                            </Box>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
             <Grid container spacing={3}>
-                {/* ─── Left Column: Signal + Trade Panel ──────────── */}
+                {/* ─── Left Column: Auto-Trade Status + Active Position ── */}
                 <Grid item xs={12} md={5}>
-                    {/* Signal Card */}
+                    {/* Auto-Trade Engine Status */}
                     <Paper sx={{ ...cardSx, p: 2, mb: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                             <Typography variant="subtitle1" fontWeight={600}>
                                 <Zap size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                                Scalp Signal
+                                Auto-Trade Engine
                             </Typography>
-                            <Button size="small" onClick={loadSignal} disabled={signalLoading}
-                                startIcon={signalLoading ? <CircularProgress size={14} /> : <RefreshCw size={14} />}>
-                                Scan
-                            </Button>
+                            {isEnabled && (
+                                <Chip label="Scanning every 60s" size="small" variant="outlined" color="success"
+                                    icon={<Radio size={10} />} sx={{ fontSize: '0.65rem' }} />
+                            )}
                         </Box>
 
-                        {signalLoading && <LinearProgress sx={{ mb: 1 }} />}
-
-                        {signal ? (
-                            <>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                        {/* Last signal */}
+                        {autoStatus?.last_signal ? (
+                            <Card sx={{ mb: 1.5, p: 1.5, bgcolor: isDark ? alpha('#fff', 0.02) : alpha('#000', 0.01) }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600}>Last Signal</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                     <Chip
-                                        label={signal.signal}
-                                        color={signal.signal === 'CE' ? 'success' : signal.signal === 'PE' ? 'error' : 'default'}
-                                        size="medium" sx={{ fontWeight: 700, fontSize: '1rem', px: 1 }}
-                                    />
-                                    {signal.confidence != null && (
-                                        <Chip label={`${fmt(signal.confidence, 1)}% conf`}
-                                            variant="outlined" size="small" />
-                                    )}
-                                </Box>
-
-                                {signal.signal !== 'NO_TRADE' && (
-                                    <Grid container spacing={1} sx={{ mb: 2 }}>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">Strike</Typography>
-                                            <Typography fontWeight={600}>{signal.strike}</Typography>
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">Entry</Typography>
-                                            <Typography fontWeight={600}>{fmtINR(signal.entry)}</Typography>
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">Lot Size</Typography>
-                                            <Typography fontWeight={600}>65</Typography>
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">SL</Typography>
-                                            <Typography fontWeight={600} color="error.main">{fmtINR(signal.sl)}</Typography>
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">Target</Typography>
-                                            <Typography fontWeight={600} color="success.main">{fmtINR(signal.target)}</Typography>
-                                        </Grid>
-                                        <Grid item xs={4}>
-                                            <Typography variant="caption" color="text.secondary">Risk:Reward</Typography>
-                                            <Typography fontWeight={600}>1:2</Typography>
-                                        </Grid>
-                                    </Grid>
-                                )}
-
-                                {/* Indicators */}
-                                {signal.indicators && (
-                                    <Box sx={{ mb: 2 }}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
-                                            Indicators
-                                        </Typography>
-                                        <Grid container spacing={0.5}>
-                                            {Object.entries(signal.indicators).map(([k, v]) => (
-                                                <Grid item xs={6} key={k}>
-                                                    <Typography variant="caption">
-                                                        {k.replace(/_/g, ' ')}: <strong>{typeof v === 'number' ? fmt(v, 2) : String(v)}</strong>
-                                                    </Typography>
-                                                </Grid>
-                                            ))}
-                                        </Grid>
-                                    </Box>
-                                )}
-
-                                {signal.signal !== 'NO_TRADE' && (
-                                    <Button
-                                        variant="contained" fullWidth
-                                        color={signal.signal === 'CE' ? 'success' : 'error'}
-                                        startIcon={actionLoading === 'place' ? <CircularProgress size={16} color="inherit" /> : <Play size={16} />}
-                                        disabled={actionLoading === 'place'}
-                                        onClick={handlePlaceTrade}
+                                        label={autoStatus.last_signal.direction}
+                                        size="small"
+                                        color={autoStatus.last_signal.direction === 'CE' ? 'success' : 'error'}
                                         sx={{ fontWeight: 700 }}
-                                    >
-                                        Place {signal.signal} Trade · Strike {signal.strike}
-                                    </Button>
-                                )}
-
-                                {signal.signal === 'NO_TRADE' && (
-                                    <Alert severity="info" variant="outlined">
-                                        No scalping signal — conditions not met. Will re-scan.
-                                    </Alert>
-                                )}
-                            </>
+                                    />
+                                    <Typography variant="body2" fontWeight={600}>
+                                        Strike {autoStatus.last_signal.strike} · {fmtINR(autoStatus.last_signal.entry)}
+                                    </Typography>
+                                    <Chip label={`${fmt(autoStatus.last_signal.confidence, 0)}%`}
+                                        variant="outlined" size="small" sx={{ fontSize: '0.65rem' }} />
+                                </Box>
+                            </Card>
                         ) : (
-                            <Typography color="text.secondary" variant="body2">
-                                Click Scan to generate a scalping signal
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                                {isEnabled ? 'Scanning for signals...' : 'Auto-trade is paused'}
+                            </Typography>
+                        )}
+
+                        {/* Activity Log */}
+                        {autoStatus?.log?.length > 0 && (
+                            <Box sx={{ maxHeight: 200, overflowY: 'auto' }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 0.5, display: 'block' }}>
+                                    Activity Log
+                                </Typography>
+                                {autoStatus.log.slice().reverse().map((entry, i) => (
+                                    <Box key={i} sx={{ display: 'flex', gap: 1, mb: 0.3, alignItems: 'center' }}>
+                                        <Typography variant="caption" color="text.disabled" sx={{ fontFamily: 'monospace', minWidth: 55 }}>
+                                            {entry.time}
+                                        </Typography>
+                                        <Chip label={entry.action} size="small" sx={{
+                                            height: 18, fontSize: '0.55rem', fontWeight: 700,
+                                            bgcolor: entry.action.includes('ENTRY') ? alpha('#10b981', 0.15)
+                                                : entry.action.includes('CLOSE') ? alpha('#f59e0b', 0.15)
+                                                : entry.action.includes('ERROR') ? alpha('#ef4444', 0.15)
+                                                : alpha('#6b7280', 0.1),
+                                            color: entry.action.includes('ENTRY') ? '#10b981'
+                                                : entry.action.includes('CLOSE') ? '#f59e0b'
+                                                : entry.action.includes('ERROR') ? '#ef4444'
+                                                : 'text.secondary',
+                                        }} />
+                                        <Typography variant="caption" color="text.secondary" noWrap sx={{ flex: 1 }}>
+                                            {entry.detail}
+                                        </Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                        )}
+
+                        {autoStatus?.last_scan && (
+                            <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: 'block' }}>
+                                Last scan: {new Date(autoStatus.last_scan).toLocaleTimeString('en-IN')}
                             </Typography>
                         )}
                     </Paper>
 
-                    {/* Active Trades */}
+                    {/* Active Position */}
                     <Paper sx={{ ...cardSx, p: 2 }}>
                         <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
                             <Activity size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                            Active Trades
+                            Active Position
                         </Typography>
                         {portfolio?.active_trades?.length > 0 ? (
                             portfolio.active_trades.map((t) => (
-                                <Card key={t.id} sx={{ mb: 1, p: 1.5, bgcolor: isDark ? alpha('#fff', 0.02) : alpha('#000', 0.01) }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Box>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                <Chip label={t.direction} size="small"
-                                                    color={t.direction === 'CE' ? 'success' : 'error'} />
-                                                <Typography fontWeight={600}>
-                                                    {t.strike} · {fmtINR(t.entry_price)}
-                                                </Typography>
-                                            </Box>
-                                            <Typography variant="caption" color="text.secondary">
-                                                Qty: {t.quantity} · SL: {fmtINR(t.sl)} · Tgt: {fmtINR(t.target)}
-                                            </Typography>
-                                        </Box>
-                                        <Button
-                                            variant="outlined" color="warning" size="small"
-                                            disabled={actionLoading === t.id}
-                                            startIcon={actionLoading === t.id ? <CircularProgress size={12} /> : <Square size={14} />}
-                                            onClick={() => handleCloseTrade(t.id)}
-                                        >
-                                            Close
-                                        </Button>
+                                <Card key={t.trade_id} sx={{ mb: 1, p: 1.5, bgcolor: isDark ? alpha('#fff', 0.02) : alpha('#000', 0.01) }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                                        <Chip label={t.direction} size="small"
+                                            color={t.direction === 'CE' ? 'success' : 'error'} sx={{ fontWeight: 700 }} />
+                                        <Typography fontWeight={700}>Strike {t.strike}</Typography>
                                     </Box>
+                                    <Grid container spacing={1}>
+                                        <Grid item xs={4}>
+                                            <Typography variant="caption" color="text.secondary">Entry</Typography>
+                                            <Typography variant="body2" fontWeight={600}>{fmtINR(t.entry_premium)}</Typography>
+                                        </Grid>
+                                        <Grid item xs={4}>
+                                            <Typography variant="caption" color="text.secondary">SL</Typography>
+                                            <Typography variant="body2" fontWeight={600} color="error.main">{fmtINR(t.sl_premium)}</Typography>
+                                        </Grid>
+                                        <Grid item xs={4}>
+                                            <Typography variant="caption" color="text.secondary">Target</Typography>
+                                            <Typography variant="body2" fontWeight={600} color="success.main">{fmtINR(t.target_premium)}</Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Qty</Typography>
+                                            <Typography variant="body2">{t.quantity}</Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Slippage</Typography>
+                                            <Typography variant="body2">{t.slippage_pct}%</Typography>
+                                        </Grid>
+                                    </Grid>
+                                    <Alert severity="info" variant="outlined" sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>
+                                        Auto-managed — will close at SL/Target automatically
+                                    </Alert>
                                 </Card>
                             ))
                         ) : (
                             <Typography variant="body2" color="text.secondary">
-                                No active trades
+                                No active position — waiting for next signal
                             </Typography>
                         )}
                     </Paper>
                 </Grid>
 
-                {/* ─── Right Column: Options Chain + History ──────── */}
+                {/* ─── Right Column: Chain + Trade History ────────── */}
                 <Grid item xs={12} md={7}>
                     {/* Options Chain */}
                     <Paper sx={{ ...cardSx, p: 2, mb: 3 }}>
                         <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>
                             <BarChart3 size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-                            Options Chain {chain?.atm_strike ? `(ATM: ${chain.atm_strike})` : ''}
+                            Options Chain {chain?.atm ? `(ATM: ${chain.atm})` : ''}
                         </Typography>
-                        {chain?.strikes?.length > 0 ? (
-                            <TableContainer sx={{ maxHeight: 320 }}>
+                        {chain?.chain?.length > 0 ? (
+                            <TableContainer sx={{ maxHeight: 280 }}>
                                 <Table size="small" stickyHeader>
                                     <TableHead>
                                         <TableRow>
                                             <TableCell sx={{ fontWeight: 600 }}>CE OI</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>CE Bid</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>CE Ask</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>CE Prem</TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 700, bgcolor: isDark ? alpha('#fff', 0.06) : alpha('#000', 0.04) }}>Strike</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>PE Bid</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>PE Ask</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>PE Prem</TableCell>
                                             <TableCell sx={{ fontWeight: 600 }}>PE OI</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {chain.strikes.map((row) => {
-                                            const isATM = row.strike === chain.atm_strike;
-                                            return (
-                                                <TableRow key={row.strike} sx={isATM ? { bgcolor: isDark ? alpha('#2196f3', 0.1) : alpha('#2196f3', 0.05) } : {}}>
-                                                    <TableCell>{row.ce_oi ? Number(row.ce_oi).toLocaleString() : '—'}</TableCell>
-                                                    <TableCell>{fmt(row.ce_bid)}</TableCell>
-                                                    <TableCell>{fmt(row.ce_ask)}</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 700, bgcolor: isDark ? alpha('#fff', 0.06) : alpha('#000', 0.04) }}>
-                                                        {row.strike}
-                                                    </TableCell>
-                                                    <TableCell>{fmt(row.pe_bid)}</TableCell>
-                                                    <TableCell>{fmt(row.pe_ask)}</TableCell>
-                                                    <TableCell>{row.pe_oi ? Number(row.pe_oi).toLocaleString() : '—'}</TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
+                                        {chain.chain.map((row) => (
+                                            <TableRow key={row.strike} sx={row.is_atm ? { bgcolor: isDark ? alpha('#2196f3', 0.1) : alpha('#2196f3', 0.05) } : {}}>
+                                                <TableCell>{row.ce_oi ? Number(row.ce_oi).toLocaleString() : '—'}</TableCell>
+                                                <TableCell>{fmtINR(row.ce_premium)}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, bgcolor: isDark ? alpha('#fff', 0.06) : alpha('#000', 0.04) }}>
+                                                    {row.strike}
+                                                </TableCell>
+                                                <TableCell>{fmtINR(row.pe_premium)}</TableCell>
+                                                <TableCell>{row.pe_oi ? Number(row.pe_oi).toLocaleString() : '—'}</TableCell>
+                                            </TableRow>
+                                        ))}
                                     </TableBody>
                                 </Table>
                             </TableContainer>
                         ) : (
                             <Typography variant="body2" color="text.secondary">
-                                Options chain data unavailable — market may be closed
+                                Options chain unavailable — market may be closed
                             </Typography>
                         )}
                     </Paper>
@@ -439,24 +395,27 @@ const OptionsScalping = () => {
                                             <TableCell sx={{ fontWeight: 600 }}>Entry</TableCell>
                                             <TableCell sx={{ fontWeight: 600 }}>Exit</TableCell>
                                             <TableCell sx={{ fontWeight: 600 }}>P&L</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Hold</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Result</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
                                         {portfolio.trade_history.slice().reverse().map((t, i) => (
-                                            <TableRow key={t.id || i}>
+                                            <TableRow key={t.trade_id || i}>
                                                 <TableCell>
                                                     <Typography variant="caption">
-                                                        {t.entry_time ? new Date(t.entry_time).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—'}
+                                                        {t.entry_time ? new Date(t.entry_time).toLocaleString('en-IN', {
+                                                            hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short'
+                                                        }) : '—'}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Chip label={t.direction} size="small"
-                                                        color={t.direction === 'CE' ? 'success' : 'error'} />
+                                                        color={t.direction === 'CE' ? 'success' : 'error'} sx={{ fontWeight: 600 }} />
                                                 </TableCell>
                                                 <TableCell>{t.strike}</TableCell>
-                                                <TableCell>{fmtINR(t.entry_price)}</TableCell>
-                                                <TableCell>{fmtINR(t.exit_price)}</TableCell>
+                                                <TableCell>{fmtINR(t.entry_premium)}</TableCell>
+                                                <TableCell>{fmtINR(t.exit_premium)}</TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2" fontWeight={600}
                                                         sx={{ color: pctColor(t.pnl) }}>
@@ -464,8 +423,14 @@ const OptionsScalping = () => {
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
+                                                    <Typography variant="caption">
+                                                        {t.hold_duration_sec != null ? `${t.hold_duration_sec}s` : '—'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell>
                                                     <Chip label={t.result || 'closed'} size="small" variant="outlined"
-                                                        color={t.result === 'WIN' ? 'success' : t.result === 'LOSS' ? 'error' : 'default'} />
+                                                        color={t.result === 'WIN' ? 'success' : t.result === 'LOSS' ? 'error' : 'default'}
+                                                        sx={{ fontWeight: 600 }} />
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -474,19 +439,19 @@ const OptionsScalping = () => {
                             </TableContainer>
                         ) : (
                             <Typography variant="body2" color="text.secondary">
-                                No trade history yet — place your first scalp trade
+                                No trade history yet — auto-trader will place trades during market hours
                             </Typography>
                         )}
                     </Paper>
                 </Grid>
             </Grid>
 
-            {/* Reset Confirmation Dialog */}
+            {/* Reset Dialog */}
             <Dialog open={resetDialogOpen} onClose={() => setResetDialogOpen(false)}>
                 <DialogTitle>Reset Paper Trading Portfolio?</DialogTitle>
                 <DialogContent>
                     <Typography>
-                        This will reset capital to ₹1,00,000 and clear all trade history. This action cannot be undone.
+                        This will reset capital to ₹1,00,000 and clear all trade history. This cannot be undone.
                     </Typography>
                 </DialogContent>
                 <DialogActions>

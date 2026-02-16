@@ -229,12 +229,12 @@ const SignalCard = ({ rec, onViewReport, ltp, prevLtp, isAiTraded }) => {
                                 </Typography>
                                 <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '0.7rem' }}>•</Typography>
                                 <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
-                                    Rec: {formatINR(entryPrice, 2)}
+                                    Entry: {formatINR(entryPrice, 2)}
                                 </Typography>
                             </>
                         ) : (
                             <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.primary' }}>
-                                Rec: {formatINR(entryPrice, 2)}
+                                Entry: {formatINR(entryPrice, 2)}
                             </Typography>
                         )}
                     </Box>

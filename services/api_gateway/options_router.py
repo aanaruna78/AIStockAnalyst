@@ -85,3 +85,13 @@ async def close_trade(request: Request):
 @router.post("/portfolio/reset")
 async def reset_portfolio():
     return await _proxy_post("/portfolio/reset")
+
+
+@router.get("/auto-trade/status")
+async def auto_trade_status():
+    return await _proxy_get("/auto-trade/status")
+
+
+@router.post("/auto-trade/toggle")
+async def toggle_auto_trade():
+    return await _proxy_post("/auto-trade/toggle")

@@ -57,8 +57,9 @@ class TestJWT:
 
     def test_tampered_token_returns_none(self):
         token = create_access_token({"sub": "user@test.com"})
-        # Tamper with the token by flipping a character
-        tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+        # Tamper by replacing the entire signature portion with garbage
+        parts = token.rsplit(".", 1)
+        tampered = parts[0] + ".TAMPERED_SIGNATURE_INVALID"
         result = decode_access_token(tampered)
         assert result is None
 

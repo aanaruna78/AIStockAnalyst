@@ -26,6 +26,8 @@ import logging
 import re
 import requests
 import numpy as np
+import threading
+import time as _time
 
 app = FastAPI(title="SignalForge Options Scalping Service")
 logging.basicConfig(level=logging.INFO)
@@ -90,6 +92,11 @@ class PaperTradingEngine:
         self.total_pnl = 0.0
         self.day_trade_count = 0
         self.current_date = None
+        # Auto-trade state
+        self.auto_trade_enabled = True
+        self.auto_trade_log = []       # recent auto-trade actions (last 50)
+        self.last_scan_time = None
+        self.last_signal = None
         self._load()
 
     def _load(self):
@@ -270,7 +277,34 @@ class PaperTradingEngine:
         self.day_trade_count = 0
         self.current_date = None
         self._save()
+        self.auto_trade_log = []
         return {"status": "reset", "capital": self.capital}
+
+    def _add_log(self, action: str, detail: str = ""):
+        """Append to auto-trade action log (kept in memory, last 100)"""
+        entry = {
+            "time": datetime.now(IST).strftime("%H:%M:%S"),
+            "action": action,
+            "detail": detail,
+        }
+        self.auto_trade_log.append(entry)
+        self.auto_trade_log = self.auto_trade_log[-100:]
+
+    def check_sl_target(self, spot: float):
+        """Auto-close active trades that hit SL or Target based on spot movement."""
+        if not self.active_trades:
+            return
+        for trade in list(self.active_trades):
+            sl = trade.get("sl_premium", 0)
+            target = trade.get("target_premium", 999999)
+            # Estimate current premium from spot
+            current = estimate_option_premium(spot, trade["strike"], trade["direction"])
+            if current <= sl:
+                result = self.close_trade(trade["trade_id"], current)
+                self._add_log("AUTO-CLOSE SL", f"{trade['direction']} {trade['strike']} exit@₹{current:.2f} PnL=₹{result.get('trade',{}).get('pnl',0):.2f}")
+            elif current >= target:
+                result = self.close_trade(trade["trade_id"], current)
+                self._add_log("AUTO-CLOSE TGT", f"{trade['direction']} {trade['strike']} exit@₹{current:.2f} PnL=₹{result.get('trade',{}).get('pnl',0):.2f}")
 
 
 # Singleton
@@ -545,23 +579,14 @@ async def get_scalp_signal():
 
 @app.post("/trade/place")
 async def place_trade(req: TradeRequest):
-    """Place a paper scalping trade"""
-    now = datetime.now(IST)
-    hour = now.hour
-    minute = now.minute
-
-    # Market hours check (9:20 - 15:15)
-    market_minutes = hour * 60 + minute
-    if market_minutes < 560 or market_minutes > 915:  # 9:20=560, 15:15=915
-        return {"status": "rejected", "reason": "Market closed (9:20-15:15 IST)"}
-
+    """Place a paper scalping trade (used by auto-trader internally)"""
     result = paper_engine.place_trade(req.direction, req.strike, req.entry_premium, req.lots)
     return result
 
 
 @app.post("/trade/close")
 async def close_trade(req: TradeCloseRequest):
-    """Close an active paper scalping trade"""
+    """Close an active paper scalping trade (used by auto-trader internally)"""
     result = paper_engine.close_trade(req.trade_id, req.exit_premium)
     return result
 
@@ -576,6 +601,32 @@ async def get_portfolio():
 async def reset_portfolio():
     """Reset options paper trading account"""
     return paper_engine.reset()
+
+
+@app.get("/auto-trade/status")
+async def auto_trade_status():
+    """Get auto-trade engine status"""
+    return {
+        "enabled": paper_engine.auto_trade_enabled,
+        "last_scan": paper_engine.last_scan_time,
+        "last_signal": paper_engine.last_signal,
+        "active_trades": len(paper_engine.active_trades),
+        "day_trade_count": paper_engine.day_trade_count,
+        "max_trades_per_day": MAX_TRADES_PER_DAY,
+        "log": paper_engine.auto_trade_log[-20:],
+        "capital": round(paper_engine.capital, 2),
+        "timestamp": datetime.now(IST).isoformat(),
+    }
+
+
+@app.post("/auto-trade/toggle")
+async def toggle_auto_trade():
+    """Toggle auto-trade on/off"""
+    paper_engine.auto_trade_enabled = not paper_engine.auto_trade_enabled
+    state = "ENABLED" if paper_engine.auto_trade_enabled else "DISABLED"
+    paper_engine._add_log("TOGGLE", f"Auto-trade {state}")
+    logger.info(f"Auto-trade toggled: {state}")
+    return {"enabled": paper_engine.auto_trade_enabled}
 
 
 @app.get("/stats/daily")
@@ -605,6 +656,87 @@ def _get_next_thursday() -> str:
     from datetime import timedelta
     expiry = now + timedelta(days=days_ahead)
     return expiry.strftime("%Y-%m-%d")
+
+
+# ──────────────────────────────────────────────────────────────────
+# Auto-Trade Background Loop
+# ──────────────────────────────────────────────────────────────────
+SCAN_INTERVAL_SEC = 60  # scan every 60 seconds
+
+
+def _is_market_open() -> bool:
+    """Check if market is open (9:20 – 15:15 IST, Mon-Fri)"""
+    now = datetime.now(IST)
+    if now.weekday() >= 5:  # Sat/Sun
+        return False
+    minutes = now.hour * 60 + now.minute
+    return 560 <= minutes <= 915  # 9:20 = 560, 15:15 = 915
+
+
+def _auto_trade_loop():
+    """Background thread: scan for signals and auto-place/close trades."""
+    logger.info("Auto-trade loop started")
+    while True:
+        try:
+            if not paper_engine.auto_trade_enabled:
+                _time.sleep(SCAN_INTERVAL_SEC)
+                continue
+
+            if not _is_market_open():
+                _time.sleep(SCAN_INTERVAL_SEC)
+                continue
+
+            spot = get_nifty_spot()
+            if not spot:
+                paper_engine._add_log("SCAN", "Failed to fetch Nifty spot")
+                _time.sleep(SCAN_INTERVAL_SEC)
+                continue
+
+            paper_engine.last_scan_time = datetime.now(IST).isoformat()
+
+            # 1) Check SL / Target on active trades
+            paper_engine.check_sl_target(spot)
+
+            # 2) If no active position, generate signal and auto-enter
+            if not paper_engine.active_trades:
+                signal = generate_scalp_signal(spot)
+                if signal:
+                    paper_engine.last_signal = {
+                        "direction": signal.direction,
+                        "strike": signal.strike,
+                        "entry": signal.entry_premium,
+                        "confidence": signal.confidence,
+                        "time": signal.timestamp,
+                    }
+                    result = paper_engine.place_trade(
+                        signal.direction, signal.strike, signal.entry_premium
+                    )
+                    if result["status"] == "placed":
+                        paper_engine._add_log(
+                            "AUTO-ENTRY",
+                            f"{signal.direction} {signal.strike} @ ₹{signal.entry_premium:.2f} conf={signal.confidence:.0f}%"
+                        )
+                    else:
+                        paper_engine._add_log("REJECTED", result.get("reason", ""))
+                else:
+                    paper_engine.last_signal = None
+                    paper_engine._add_log("SCAN", "No signal")
+            else:
+                paper_engine._add_log("SCAN", f"Position open — monitoring SL/TGT (spot={spot:.2f})")
+
+        except Exception as e:
+            logger.error(f"Auto-trade loop error: {e}")
+            paper_engine._add_log("ERROR", str(e)[:80])
+
+        _time.sleep(SCAN_INTERVAL_SEC)
+
+
+@app.on_event("startup")
+async def start_auto_trader():
+    """Start the auto-trade background thread on service startup."""
+    t = threading.Thread(target=_auto_trade_loop, daemon=True, name="auto-trader")
+    t.start()
+    logger.info("Auto-trade background thread launched")
 
 
 if __name__ == "__main__":

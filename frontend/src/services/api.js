@@ -260,4 +260,14 @@ export const resetOptionsPortfolio = async () => {
     return data;
 };
 
+export const fetchAutoTradeStatus = async () => {
+    const { data } = await api.get('/options/auto-trade/status');
+    return data;
+};
+
+export const toggleAutoTrade = async () => {
+    const { data } = await api.post('/options/auto-trade/toggle');
+    return data;
+};
+
 export default api;
