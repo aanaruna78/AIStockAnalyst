@@ -13,7 +13,6 @@ import logging
 
 app = FastAPI(title="SignalForge Recommendation Engine")
 logging.basicConfig(level=logging.INFO)
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("RecommendationEngine")
 
 # Color Constants for Rationale (Hex matching Frontend Theme)

@@ -27,7 +27,7 @@ class TickerTapeCrawler(BaseCrawler):
         """
         try:
             url = self.search_api.format(symbol)
-            async with httpx.AsyncClient(verify=False, headers=self.headers) as client:
+            async with httpx.AsyncClient(verify=True, headers=self.headers, timeout=15.0) as client:
                 resp = await client.get(url)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -129,8 +129,73 @@ class TickerTapeCrawler(BaseCrawler):
                     if title:
                         data["checklist"][title] = tag
 
-            # 4. Forecast
-            # Placeholder for future implementation if key is found
+            # 4. Forecast & Analyst Ratings
+            # Extract from multiple possible locations in __NEXT_DATA__
+            forecast_data = {}
+
+            # 4a. Analyst consensus from securityAnalysis or analystConsensus
+            analyst_consensus = props.get("analystConsensus", {}) or props.get("securityAnalysis", {})
+            if analyst_consensus:
+                buy_count = analyst_consensus.get("buy", 0) or 0
+                hold_count = analyst_consensus.get("hold", 0) or 0
+                sell_count = analyst_consensus.get("sell", 0) or 0
+                total_analysts = buy_count + hold_count + sell_count
+                if total_analysts > 0:
+                    buy_pct = round((buy_count / total_analysts) * 100, 1)
+                    forecast_data["analyst_rating"] = f"{buy_pct}% Buy"
+                    forecast_data["analyst_count"] = total_analysts
+                    forecast_data["buy_count"] = buy_count
+                    forecast_data["hold_count"] = hold_count
+                    forecast_data["sell_count"] = sell_count
+
+                # Target price / upside
+                target_price = analyst_consensus.get("targetPrice") or analyst_consensus.get("meanTarget")
+                if target_price and quote.get("price"):
+                    try:
+                        tp = float(target_price)
+                        cp = float(quote["price"])
+                        if cp > 0:
+                            upside_pct = round(((tp - cp) / cp) * 100, 1)
+                            forecast_data["upside"] = f"{upside_pct}%"
+                            forecast_data["target_price"] = tp
+                    except (ValueError, TypeError):
+                        pass
+
+            # 4b. Try 'forecast' key directly (some pages have it)
+            page_forecast = props.get("forecast", {})
+            if page_forecast:
+                if not forecast_data.get("upside") and page_forecast.get("upside"):
+                    forecast_data["upside"] = str(page_forecast["upside"])
+                if not forecast_data.get("analyst_rating") and page_forecast.get("analyst_rating"):
+                    forecast_data["analyst_rating"] = str(page_forecast["analyst_rating"])
+
+            # 4c. Technical rating from technicals or overview
+            technicals = props.get("technicals", {}) or props.get("overview", {})
+            if technicals:
+                tech_rating = technicals.get("recommendation") or technicals.get("signal")
+                if tech_rating:
+                    data["technical_rating"] = str(tech_rating).title()
+
+            # 4d. Scorecard-based technical inference (fallback)
+            if not data.get("technical_rating") and data.get("checklist"):
+                bullish_count = sum(1 for v in data["checklist"].values() if v in ["Bullish", "Positive", "Good"])
+                bearish_count = sum(1 for v in data["checklist"].values() if v in ["Bearish", "Negative", "Bad"])
+                total_checks = len(data["checklist"])
+                if total_checks > 0:
+                    bullish_ratio = bullish_count / total_checks
+                    if bullish_ratio > 0.7:
+                        data["technical_rating"] = "Very Bullish"
+                    elif bullish_ratio > 0.5:
+                        data["technical_rating"] = "Bullish"
+                    elif bearish_count / total_checks > 0.7:
+                        data["technical_rating"] = "Very Bearish"
+                    elif bearish_count / total_checks > 0.5:
+                        data["technical_rating"] = "Bearish"
+                    else:
+                        data["technical_rating"] = "Neutral"
+
+            data["forecast"] = forecast_data
+            logger.info(f"TickerTape {symbol}: forecast={forecast_data}, tech_rating={data.get('technical_rating', 'N/A')}")
 
             # 5. Financial Statements
             # Extracting latest 3 years of consolidated data
@@ -161,7 +226,7 @@ class TickerTapeCrawler(BaseCrawler):
 
     async def verify_url(self, url: str) -> bool:
         try:
-             async with httpx.AsyncClient(verify=False, headers=self.headers, follow_redirects=True) as client:
+             async with httpx.AsyncClient(verify=True, headers=self.headers, follow_redirects=True, timeout=15.0) as client:
                  resp = await client.head(url)
                  return resp.status_code == 200
         except Exception:

@@ -1,12 +1,95 @@
 from base_crawler import BaseCrawler
 import logging
 import httpx
+import re
 
 logger = logging.getLogger("MoneycontrolCrawler")
+
+# Common Moneycontrol name → NSE symbol mappings for names that don't trivially normalize
+MC_SYMBOL_MAP = {
+    "HDFC BANK": "HDFCBANK",
+    "ICICI BANK": "ICICIBANK",
+    "AXIS BANK": "AXISBANK",
+    "STATE BANK": "SBIN",
+    "SBI": "SBIN",
+    "KOTAK MAHINDRA": "KOTAKBANK",
+    "KOTAK BANK": "KOTAKBANK",
+    "INDUSIND BANK": "INDUSINDBK",
+    "BAJAJ FINANCE": "BAJFINANCE",
+    "BAJAJ FINSERV": "BAJAJFINSV",
+    "MAHINDRA & MAHINDRA": "M&M",
+    "M&M": "M&M",
+    "TATA MOTORS": "TATAMOTORS",
+    "TATA STEEL": "TATASTEEL",
+    "TATA POWER": "TATAPOWER",
+    "TATA CONSULTANCY": "TCS",
+    "TCS": "TCS",
+    "RELIANCE": "RELIANCE",
+    "INFOSYS": "INFY",
+    "WIPRO": "WIPRO",
+    "HCL TECH": "HCLTECH",
+    "HCL TECHNOLOGIES": "HCLTECH",
+    "TECH MAHINDRA": "TECHM",
+    "L&T": "LT",
+    "LARSEN": "LT",
+    "ADANI PORTS": "ADANIPORTS",
+    "ADANI ENTERPRISES": "ADANIENT",
+    "POWER GRID": "POWERGRID",
+    "NTPC": "NTPC",
+    "SUN PHARMA": "SUNPHARMA",
+    "DR REDDY": "DRREDDY",
+    "DIVI'S LAB": "DIVISLAB",
+    "DIVIS LAB": "DIVISLAB",
+    "ULTRA CEMENT": "ULTRACEMCO",
+    "ULTRATECH CEMENT": "ULTRACEMCO",
+    "ASIAN PAINTS": "ASIANPAINT",
+    "BRITANNIA": "BRITANNIA",
+    "NESTLE": "NESTLEIND",
+    "HINDALCO": "HINDALCO",
+    "JSW STEEL": "JSWSTEEL",
+    "MARUTI": "MARUTI",
+    "HERO MOTO": "HEROMOTOCO",
+    "EICHER MOTORS": "EICHERMOT",
+    "BHARTI AIRTEL": "BHARTIARTL",
+    "ITC": "ITC",
+    "COAL INDIA": "COALINDIA",
+    "GRASIM": "GRASIM",
+    "CIPLA": "CIPLA",
+    "APOLLO HOSPITALS": "APOLLOHOSP",
+    "ZOMATO": "ETERNAL",
+}
 
 class MoneycontrolCrawler(BaseCrawler):
     def __init__(self, source_id: str, base_url: str, rate_limit: int, robots_url: str = None):
         super().__init__(source_id, base_url, rate_limit, robots_url)
+
+    def _resolve_symbol(self, stock_name: str, stock_short: str) -> str:
+        """Resolve Moneycontrol stock name to NSE symbol using mapping + heuristics."""
+        # Try the short name first (most reliable)
+        if stock_short:
+            short_upper = stock_short.upper().strip()
+            # Direct mapping check
+            if short_upper in MC_SYMBOL_MAP:
+                return MC_SYMBOL_MAP[short_upper]
+            # If short name looks like a clean ticker already (no spaces), use it
+            if " " not in short_upper and len(short_upper) <= 15:
+                return short_upper
+        
+        # Try full name mapping
+        if stock_name:
+            name_upper = stock_name.upper().strip()
+            # Check against mapping (exact and prefix)
+            for mc_name, nse_sym in MC_SYMBOL_MAP.items():
+                if mc_name in name_upper or name_upper.startswith(mc_name):
+                    return nse_sym
+
+            # Fallback: remove common suffixes and spaces
+            cleaned = re.sub(r'\b(LIMITED|LTD|CORPORATION|CORP|INDUSTRIES|IND)\b', '', name_upper)
+            cleaned = re.sub(r'[^A-Z0-9&]', '', cleaned).strip()
+            if cleaned:
+                return cleaned
+        
+        return "UNKNOWN"
 
     async def crawl_recommendations(self):
         # Use the JSON API identified in analysis
@@ -34,14 +117,8 @@ class MoneycontrolCrawler(BaseCrawler):
                 stock_name = item.get("stkname", "")
                 stock_short = item.get("stockShortName", "")
                 
-                # Safe symbol extraction
-                if stock_short:
-                    symbol = stock_short.upper().replace(" ", "")
-                elif stock_name:
-                    name_parts = stock_name.upper().split()
-                    symbol = name_parts[0] if name_parts else "UNKNOWN"
-                else:
-                    symbol = "UNKNOWN"
+                # Resolve to NSE symbol using mapping + heuristics
+                symbol = self._resolve_symbol(stock_name, stock_short)
 
                 # 2. Action
                 action = item.get("recommend_flag", "NEUTRAL").upper()

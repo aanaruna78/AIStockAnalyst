@@ -70,65 +70,122 @@ class ScoringModel:
             return {k: v / total for k, v in effective_weights.items()}
         return self.base_weights
 
-    def _calculate_analyst_score(self, tickertape_data: Dict[str, Any]) -> float:
+    def _calculate_analyst_score(self, tickertape_data: Dict[str, Any], signals: List[Dict[str, Any]] = None) -> float:
         """
-        Score based on professional analyst ratings and forecasts from TickerTape.
+        Score based on professional analyst ratings from TickerTape + crawled analyst signals
+        (Moneycontrol, 5paisa, Trendlyne).
         Range: 0.0 to 1.0 (0.5 Neutral)
         """
-        if not tickertape_data:
-            return 0.5
-            
         score = 0.5
+        has_data = False
         
-        # 1. Forecast Upside
-        forecast = tickertape_data.get("forecast", {})
-        upside_str = forecast.get("upside") # e.g. "High (23.5%)" or just "23.5%"
-        if upside_str:
-            try:
-                # Extract number
-                match = re.search(r"(\d+\.?\d*)", upside_str)
-                if match:
-                    upside_val = float(match.group(1))
-                    if "Low" in upside_str or upside_val < 0:
-                        score -= 0.1
-                    elif upside_val > settings.ANALYST_UPSIDE_HIGH:
-                        score += 0.2 # Bonus for > 20% upside
-                    elif upside_val > settings.ANALYST_UPSIDE_MID:
-                        score += 0.1 # Bonus for > 10% upside
-            except Exception:
-                pass
+        # --- Part A: TickerTape Forecast Data ---
+        if tickertape_data:
+            # 1. Forecast Upside
+            forecast = tickertape_data.get("forecast", {})
+            upside_str = forecast.get("upside")  # e.g. "High (23.5%)" or "23.5%"
+            if upside_str:
+                has_data = True
+                try:
+                    match = re.search(r"(-?\d+\.?\d*)", upside_str)
+                    if match:
+                        upside_val = float(match.group(1))
+                        if upside_val < 0:
+                            score -= 0.15
+                        elif "Low" in str(upside_str):
+                            score -= 0.05
+                        elif upside_val > settings.ANALYST_UPSIDE_HIGH:
+                            score += 0.15
+                        elif upside_val > settings.ANALYST_UPSIDE_MID:
+                            score += 0.08
+                        elif upside_val > 5:
+                            score += 0.03
+                except Exception:
+                    pass
+                
+            # 2. Analyst Ratings — "80% Buy"
+            rating_str = forecast.get("analyst_rating")
+            if rating_str:
+                has_data = True
+                try:
+                    match = re.search(r"(\d+)%", rating_str)
+                    if match:
+                        percent = float(match.group(1))
+                        if "Buy" in rating_str:
+                            if percent > settings.ANALYST_BUY_PERCENT_HIGH:
+                                score += 0.15
+                            elif percent > settings.ANALYST_BUY_PERCENT_MID:
+                                score += 0.08
+                            elif percent < settings.ANALYST_BUY_PERCENT_LOW:
+                                score -= 0.05
+                        elif "Sell" in rating_str:
+                            score -= (percent / 100) * 0.2
+                except Exception:
+                    pass
+                
+            # 3. Technical Rating from TickerTape
+            tech_rating = tickertape_data.get("technical_rating")
+            if tech_rating:
+                has_data = True
+                if "Very Bull" in tech_rating:
+                    score += 0.1
+                elif "Very Bear" in tech_rating:
+                    score -= 0.1
+                elif "Bull" in tech_rating:
+                    score += 0.05
+                elif "Bear" in tech_rating:
+                    score -= 0.05
+
+        # --- Part B: Crawled Analyst Recommendations (Moneycontrol, 5paisa, Trendlyne) ---
+        if signals:
+            analyst_sources = {"Moneycontrol", "5paisa", "Trendlyne", "Trendlyne Research"}
+            analyst_signals = [s for s in signals if s.get("source") in analyst_sources]
             
-        # 2. Analyst Ratings
-        # "80% Buy" -> Parse
-        rating_str = forecast.get("analyst_rating") # "80% Buy"
-        if rating_str:
-            try:
-                match = re.search(r"(\d+)%", rating_str)
-                if match:
-                    percent = float(match.group(1))
-                    if "Buy" in rating_str:
-                        if percent > settings.ANALYST_BUY_PERCENT_HIGH:
-                            score += 0.2
-                        elif percent > settings.ANALYST_BUY_PERCENT_MID:
-                            score += 0.1
-                        elif percent < settings.ANALYST_BUY_PERCENT_LOW:
-                            score -= 0.1
-                    elif "Sell" in rating_str:
-                        score -= (percent / 100) * 0.2
-            except Exception:
-                pass
-            
-        # 3. Technical Rating from TickerTape (Direct confirmation)
-        tech_rating = tickertape_data.get("technical_rating") # "Bullish", "Bearish", "Neutral"
-        if tech_rating:
-            if "Very Bull" in tech_rating:
-                score += 0.2
-            elif "Very Bear" in tech_rating:
-                score -= 0.2
-            elif "Bull" in tech_rating:
-                score += 0.1
-            elif "Bear" in tech_rating:
-                score -= 0.1
+            if analyst_signals:
+                has_data = True
+                buy_count = 0
+                sell_count = 0
+                neutral_count = 0
+                total_confidence = 0.0
+                
+                for sig in analyst_signals:
+                    sentiment = sig.get("sentiment", 0.0)
+                    confidence = sig.get("confidence", 0.5)
+                    freshness = sig.get("freshness", 1.0)
+                    weight = confidence * freshness
+                    
+                    if sentiment > 0.3:
+                        buy_count += 1
+                        total_confidence += weight
+                    elif sentiment < -0.3:
+                        sell_count += 1
+                        total_confidence += weight
+                    else:
+                        neutral_count += 1
+                
+                total = buy_count + sell_count + neutral_count
+                if total > 0:
+                    # Consensus-based boost
+                    if buy_count > sell_count:
+                        # Pro-buy consensus
+                        consensus_strength = buy_count / total
+                        avg_confidence = total_confidence / max(1, buy_count + sell_count)
+                        score += consensus_strength * avg_confidence * 0.15  # Max +0.15
+                    elif sell_count > buy_count:
+                        # Pro-sell consensus
+                        consensus_strength = sell_count / total
+                        avg_confidence = total_confidence / max(1, buy_count + sell_count)
+                        score -= consensus_strength * avg_confidence * 0.15  # Max -0.15
+                    
+                    # Multi-source confirmation bonus (2+ sources agree = stronger signal)
+                    unique_sources = set(s.get("source") for s in analyst_signals if s.get("sentiment", 0) > 0.3)
+                    if len(unique_sources) >= 2:
+                        score += 0.05  # Cross-source confirmation bonus
+                    
+                    logger.info(f"Analyst consensus: {buy_count} Buy, {sell_count} Sell, {neutral_count} Hold from {total} sources")
+
+        if not has_data:
+            return 0.5  # No analyst data at all
             
         return min(1.0, max(0.0, score))
 
@@ -158,8 +215,8 @@ class ScoringModel:
         # 3.5 Fundamental Scoring (Screener)
         fund_score = self._calculate_fundamental_score(screener_analysis)
         
-        # 3.6 Analyst Scoring (TickerTape)
-        analyst_score = self._calculate_analyst_score(tickertape_analysis)
+        # 3.6 Analyst Scoring (TickerTape + Crawled Analyst Signals)
+        analyst_score = self._calculate_analyst_score(tickertape_analysis, signals)
 
         # 4. ML Score
         ml_score = 0.5
@@ -179,7 +236,9 @@ class ScoringModel:
             logger.error(f"Failed to fetch XGBoost: {e}")
 
         # 5. Dynamic Weighting (Fusion)
-        has_analyst_data = bool(tickertape_analysis)
+        analyst_sources = {"Moneycontrol", "5paisa", "Trendlyne", "Trendlyne Research"}
+        has_analyst_data = bool(tickertape_analysis and tickertape_analysis.get("forecast")) or \
+                           any(s.get("source") in analyst_sources for s in signals) if signals else False
         dyn_weights = self._get_dynamic_weights(regime, signals, ml_confidence, has_analyst_data)
         
         # Adjust weights if VIX is high (Less trust in ML/Technicals, more in Fundamentals/Analyst)
@@ -193,14 +252,10 @@ class ScoringModel:
             sentiment_score * dyn_weights["sentiment"] +
             rule_score * dyn_weights["technical_rules"] +
             ml_score * dyn_weights["ml_xgboost"] +
-            fund_score * dyn_weights.get("fundamental", settings.BASE_WEIGHT_FUNDAMENTAL) +
-            analyst_score * dyn_weights.get("analyst_ratings", settings.BASE_WEIGHT_ANALYST)
+            fund_score * dyn_weights.get("fundamental", 0.0) +
+            analyst_score * dyn_weights.get("analyst_ratings", 0.0)
         )
-        
-        # Normalize
-        total_weight = sum(dyn_weights.values())
-        if total_weight > 0:
-            final_score = final_score / total_weight
+        # dyn_weights are already normalized to sum=1.0, no need to divide again
 
         # 6. Risk Penalty — reduces conviction magnitude, does not change direction
         risk_penalty = self._calculate_risk_penalty(indicators, vix)

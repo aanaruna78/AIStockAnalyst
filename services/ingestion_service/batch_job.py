@@ -248,30 +248,38 @@ async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_
             return recs_map[tgt_symbol]
         
         # 2. Fuzzy / Normalization match
-        # Normalize: remove spaces, special chars
         tgt_clean = re.sub(r'[^A-Z0-9]', '', tgt_symbol)
         
         for key, val in recs_map.items():
             key_clean = re.sub(r'[^A-Z0-9]', '', key)
             
-            # Check contains (e.g. KOTAK in KOTAKBANK or KOTAKMAHINDRA)
-            # This is risky, e.g. "TATA" in "TATAMOTORS" and "TATASTEEL".
-            # Better check: Startswith or known variations.
-            
-            # Specific mappings/heuristics
-            # KOTAKBANK matches KOTAKMAHINDRA
-            if tgt_clean.startswith("KOTAK") and key_clean.startswith("KOTAK"):
+            # Exact match after cleaning
+            if tgt_clean == key_clean:
                 return val
             
-            # M&M vs MANDM
-            if tgt_clean == "MM" and (key_clean == "MANDM" or key_clean == "MAHINDRAEXC"):
-                 return val
+            # Known equivalents
+            known_aliases = {
+                "KOTAKBANK": ["KOTAKMAHINDRA", "KOTAK"],
+                "MM": ["MANDM", "MAHINDRA"],
+                "SBIN": ["STATEBANK", "SBI"],
+                "HDFCBANK": ["HDFCBK"],
+                "BAJFINANCE": ["BAJAJFINANCE"],
+                "BAJAJFINSV": ["BAJAJFINSERV"],
+                "LT": ["LARSEN", "LARSENTOUBRO"],
+                "INFY": ["INFOSYS"],
+                "ETERNAL": ["ZOMATO"],
+            }
+            
+            for canonical, aliases in known_aliases.items():
+                if tgt_clean == canonical or tgt_clean in aliases:
+                    if key_clean == canonical or key_clean in aliases:
+                        return val
 
-            # Simple contains if length is sufficient to avoid noise
-            if len(tgt_clean) > 3 and (tgt_clean in key_clean or key_clean in tgt_clean):
-                # Verify first 3 chars match to ensure same group
-                if tgt_clean[:3] == key_clean[:3]:
-                    return val
+            # Prefix match — both must share 4+ char prefix AND one must contain the other
+            if len(tgt_clean) >= 4 and len(key_clean) >= 4:
+                if tgt_clean[:4] == key_clean[:4]:
+                    if tgt_clean in key_clean or key_clean in tgt_clean:
+                        return val
                     
         return None
 
@@ -415,8 +423,6 @@ async def process_symbol(client, symbol, five_paisa_recs=None, mc_recs=None, tl_
                     "freshness": 1.0,
                     "raw_text": f"Aggregated {valid_hits} relevant mentions on {source}"
                 })
-    
-    logger.info(f"Aggregated {len(engine_signals)} total signals for {symbol} (Analysts + Community + Tech)")
     
     logger.info(f"Aggregated {len(engine_signals)} total signals for {symbol} (Analysts + Community + Tech)")
 
