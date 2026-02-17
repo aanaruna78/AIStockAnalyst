@@ -193,7 +193,7 @@ class GlobalMarketCrawler(BaseCrawler):
         return unique_news[:12]
 
     async def fetch_livemint_news(self) -> List[Dict[str, Any]]:
-        """Crawls LiveMint market page for news headlines (non-clickable)."""
+        """Crawls LiveMint market page for news headlines with clickable links."""
         news_items = []
         url = "https://www.livemint.com/market"
         try:
@@ -206,24 +206,41 @@ class GlobalMarketCrawler(BaseCrawler):
                     from bs4 import BeautifulSoup
                     soup = BeautifulSoup(resp.text, "html.parser")
                     
-                    # Target Markets News and Stock Market News sections
-                    # Based on research, headlines are often in h2 or h3 within these sections
-                    # We'll look for common headline patterns
+                    # Target headlines that are links (<a> tags) so we can extract URLs
                     headlines = soup.select('.market-news_news_row__R_UDp h2 a, section[class*="stock-market-news"] h2 a, .headline h2 a, .headline h3 a')
                     
                     if not headlines:
-                        # Fallback to general h2/h3 if specific classes changed
-                        headlines = soup.find_all(['h2', 'h3'], limit=15)
+                        # Fallback: find <a> tags inside h2/h3 for proper link extraction
+                        for heading in soup.find_all(['h2', 'h3'], limit=20):
+                            link = heading.find('a')
+                            if link:
+                                headlines.append(link)
+                            elif not headlines:
+                                # Pure text headings without links
+                                headlines.append(heading)
 
                     for hl in headlines:
-                        text = hl.text.strip()
+                        text = hl.get_text(strip=True)
                         if text and len(text) > 10:
+                            # Extract href if it's an <a> tag
+                            href = hl.get('href', '') if hl.name == 'a' else ''
+                            if not href:
+                                # Check if there's a child <a> tag
+                                child_link = hl.find('a')
+                                if child_link:
+                                    href = child_link.get('href', '')
+                                    text = child_link.get_text(strip=True) or text
+
+                            # Make relative URLs absolute
+                            if href and href.startswith('/'):
+                                href = f"https://www.livemint.com{href}"
+
                             news_items.append({
                                 "title": text,
-                                "link": "#",
+                                "link": href if href else "#",
                                 "publisher": "LiveMint",
                                 "provider": "LiveMint",
-                                "clickable": False
+                                "clickable": bool(href and href != "#")
                             })
                             if len(news_items) >= 8:
                                 break

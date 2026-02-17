@@ -153,7 +153,7 @@ const Portfolio = () => {
 
             {/* Stats Cards - Combined */}
             <Grid container spacing={3} sx={{ mb: 3 }}>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -166,7 +166,23 @@ const Portfolio = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, height: '100%', borderColor: unrealizedPnl >= 0 ? 'rgba(39, 201, 63, 0.3)' : 'rgba(255, 95, 86, 0.3)' }}>
+                        <CardContent>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                <Eye size={20} />
+                                <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>UNREALIZED P&L</Typography>
+                            </Box>
+                            <Typography variant="h4" fontWeight={800} sx={{ color: unrealizedPnl >= 0 ? 'success.main' : 'error.main' }}>
+                                {unrealizedPnl >= 0 ? '+' : ''}₹{unrealizedPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {portfolio.active_trades.length} open position{portfolio.active_trades.length !== 1 ? 's' : ''}
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -179,7 +195,7 @@ const Portfolio = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -192,7 +208,7 @@ const Portfolio = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, height: '100%' }}>
                         <CardContent>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -474,11 +490,26 @@ const Portfolio = () => {
                                                 }} />
                                                 <Typography fontWeight={700}>Strike {t.strike}</Typography>
                                                 <Typography variant="body2">Entry: ₹{t.entry_premium?.toFixed(2)}</Typography>
+                                                <Typography variant="body2" fontWeight={700}
+                                                    sx={{ color: t.ltp > t.entry_premium ? 'success.main' : t.ltp < t.entry_premium ? 'error.main' : 'text.primary' }}>
+                                                    LTP: ₹{t.ltp?.toFixed(2) || '—'}
+                                                </Typography>
                                                 <Typography variant="body2">SL: ₹{t.sl_premium?.toFixed(2)}</Typography>
                                                 <Typography variant="body2">Target: ₹{t.target_premium?.toFixed(2)}</Typography>
                                                 <Typography variant="body2" color="text.secondary">
                                                     {t.quantity} qty ({t.lots} lot)
                                                 </Typography>
+                                                {t.unrealized_pnl != null && (
+                                                    <Chip
+                                                        label={`${t.unrealized_pnl >= 0 ? '+' : ''}₹${t.unrealized_pnl?.toFixed(2)} (${t.unrealized_pnl_pct?.toFixed(2) || 0}%)`}
+                                                        size="small"
+                                                        sx={{
+                                                            fontWeight: 800,
+                                                            bgcolor: t.unrealized_pnl >= 0 ? 'rgba(39, 201, 63, 0.1)' : 'rgba(255, 95, 86, 0.1)',
+                                                            color: t.unrealized_pnl >= 0 ? 'success.main' : 'error.main',
+                                                        }}
+                                                    />
+                                                )}
                                             </Stack>
                                         </Card>
                                     ))}

@@ -147,9 +147,38 @@ const OptionsScalping = () => {
                             </Typography>
                             {portfolio && (
                                 <Typography variant="caption" sx={{ color: pctColor(portfolio.total_pnl) }}>
-                                    {portfolio.total_pnl >= 0 ? '+' : ''}{fmtINR(portfolio.total_pnl)} P&L
+                                    {portfolio.total_pnl >= 0 ? '+' : ''}{fmtINR(portfolio.total_pnl)} Total P&L
                                 </Typography>
                             )}
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={6} md={2.4}>
+                    <Card sx={{
+                        ...cardSx,
+                        border: portfolio?.unrealized_pnl ? `1px solid ${portfolio.unrealized_pnl >= 0 ? alpha('#10b981', 0.4) : alpha('#ef4444', 0.3)}` : cardSx.border,
+                    }} elevation={0}>
+                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Typography variant="caption" color="text.secondary">Unrealized P&L</Typography>
+                            <Typography variant="h6" fontWeight={700} sx={{ color: pctColor(portfolio?.unrealized_pnl || 0) }}>
+                                {portfolio?.unrealized_pnl != null ? `${portfolio.unrealized_pnl >= 0 ? '+' : ''}${fmtINR(portfolio.unrealized_pnl)}` : '—'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {portfolio?.active_trades?.length || 0} open
+                            </Typography>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={6} md={2.4}>
+                    <Card sx={cardSx} elevation={0}>
+                        <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Typography variant="caption" color="text.secondary">Realized P&L</Typography>
+                            <Typography variant="h6" fontWeight={700} sx={{ color: pctColor(portfolio?.realized_pnl || 0) }}>
+                                {portfolio?.realized_pnl != null ? `${portfolio.realized_pnl >= 0 ? '+' : ''}${fmtINR(portfolio.realized_pnl)}` : '—'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                closed trades
+                            </Typography>
                         </CardContent>
                     </Card>
                 </Grid>
@@ -300,27 +329,52 @@ const OptionsScalping = () => {
                                         <Chip label={t.direction} size="small"
                                             color={t.direction === 'CE' ? 'success' : 'error'} sx={{ fontWeight: 700 }} />
                                         <Typography fontWeight={700}>Strike {t.strike}</Typography>
+                                        {t.unrealized_pnl != null && (
+                                            <Chip
+                                                label={`${t.unrealized_pnl >= 0 ? '+' : ''}${fmtINR(t.unrealized_pnl)}`}
+                                                size="small"
+                                                sx={{
+                                                    fontWeight: 700, ml: 'auto',
+                                                    bgcolor: t.unrealized_pnl >= 0 ? alpha('#10b981', 0.15) : alpha('#ef4444', 0.15),
+                                                    color: t.unrealized_pnl >= 0 ? '#10b981' : '#ef4444',
+                                                }}
+                                            />
+                                        )}
                                     </Box>
                                     <Grid container spacing={1}>
-                                        <Grid item xs={4}>
+                                        <Grid item xs={3}>
                                             <Typography variant="caption" color="text.secondary">Entry</Typography>
                                             <Typography variant="body2" fontWeight={600}>{fmtINR(t.entry_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={4}>
+                                        <Grid item xs={3}>
+                                            <Typography variant="caption" color="text.secondary">LTP</Typography>
+                                            <Typography variant="body2" fontWeight={700}
+                                                sx={{ color: t.ltp > t.entry_premium ? '#10b981' : t.ltp < t.entry_premium ? '#ef4444' : 'text.primary' }}>
+                                                {t.ltp ? fmtINR(t.ltp) : '—'}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={3}>
                                             <Typography variant="caption" color="text.secondary">SL</Typography>
                                             <Typography variant="body2" fontWeight={600} color="error.main">{fmtINR(t.sl_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={4}>
+                                        <Grid item xs={3}>
                                             <Typography variant="caption" color="text.secondary">Target</Typography>
                                             <Typography variant="body2" fontWeight={600} color="success.main">{fmtINR(t.target_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={6}>
+                                        <Grid item xs={4}>
                                             <Typography variant="caption" color="text.secondary">Qty</Typography>
                                             <Typography variant="body2">{t.quantity}</Typography>
                                         </Grid>
-                                        <Grid item xs={6}>
+                                        <Grid item xs={4}>
                                             <Typography variant="caption" color="text.secondary">Slippage</Typography>
                                             <Typography variant="body2">{t.slippage_pct}%</Typography>
+                                        </Grid>
+                                        <Grid item xs={4}>
+                                            <Typography variant="caption" color="text.secondary">P&L %</Typography>
+                                            <Typography variant="body2" fontWeight={700}
+                                                sx={{ color: pctColor(t.unrealized_pnl_pct || 0) }}>
+                                                {t.unrealized_pnl_pct != null ? `${t.unrealized_pnl_pct >= 0 ? '+' : ''}${t.unrealized_pnl_pct}%` : '—'}
+                                            </Typography>
                                         </Grid>
                                     </Grid>
                                     <Alert severity="info" variant="outlined" sx={{ mt: 1, py: 0, fontSize: '0.7rem' }}>

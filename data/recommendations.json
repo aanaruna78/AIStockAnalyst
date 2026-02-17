@@ -6045,7 +6045,7 @@
     "vix_multiplier": 1.0,
     "id": "SBIN_1771254387",
     "created_at": "2026-02-16T15:06:27.077051",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T19:06:27.077053"
   },
   "TCS_1771255390": {
@@ -6114,7 +6114,7 @@
     "vix_multiplier": 1.0,
     "id": "TCS_1771256419",
     "created_at": "2026-02-16T15:40:19.839089",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T19:40:19.839091"
   },
   "INFY_1771256424": {
@@ -6137,7 +6137,76 @@
     "vix_multiplier": 1.0,
     "id": "INFY_1771256424",
     "created_at": "2026-02-16T15:40:24.056313",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T19:40:24.056315"
+  },
+  "TCS_1771258231": {
+    "symbol": "TCS",
+    "direction": "UP",
+    "conviction": 55.36,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ff5f56; font-weight: bold;\">Weakening</span> (0.3%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 55% (<span style=\"color: #ffbd2e; font-weight: bold;\">Medium</span>), driven primarily by Sentiment signals (80% bullish conviction). Key Indicators: RSI is 23.5 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 2.4% YoY. Net Margin: 18.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 20.41372960004946 (Sector 24.793939933413867), PB 10.170735625564733\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has a good return on equity (ROE) track record: 3 Years ROE 58.9%; Company has been maintaining a healthy dividend payout of 87.7%\n- Weaknesses: Stock is trading at 11.5 times its book value; The company has delivered a poor sales growth of 10.4% over past five years.\n- Efficiency: ROCE 78.4%, ROE 65.0%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 12.7,
+      "AI Model": 19.1,
+      "Fundamental": 24.0,
+      "Analyst": 0
+    },
+    "entry": 2706.6,
+    "target1": 2904.59,
+    "target2": 3003.58,
+    "sl": 2607.61,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "TCS_1771258231",
+    "created_at": "2026-02-16T16:10:31.435833",
+    "status": "active",
+    "expires_at": "2026-02-16T20:10:31.435836"
+  },
+  "INFY_1771258235": {
+    "symbol": "INFY",
+    "direction": "UP",
+    "conviction": 85.42,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ff5f56; font-weight: bold;\">Weakening</span> (0.3%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 85% (<span style=\"color: #27c93f; font-weight: bold;\">High</span>), driven primarily by Sentiment signals (80% bullish conviction). Key Indicators: RSI is 7.3 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 6.6% YoY. Net Margin: 15.8%.\n\n**Fundamental Analysis**\n- Metrics: PE 19.80178283694659 (Sector 24.793939933413867), PB 5.757569613370372\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company is almost debt free.; Stock is providing a good dividend yield of 3.15%.\n- Weaknesses: Stock is trading at 7.63 times its book value; The company has delivered a poor sales growth of 11.6% over past five years.\n- Efficiency: ROCE 40.6%, ROE 30.3%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 24.7,
+      "AI Model": 37.9,
+      "Fundamental": 46.0,
+      "Analyst": 0
+    },
+    "entry": 1365.6,
+    "target1": 1480.43,
+    "target2": 1537.84,
+    "sl": 1308.19,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "INFY_1771258235",
+    "created_at": "2026-02-16T16:10:35.673533",
+    "status": "active",
+    "expires_at": "2026-02-16T20:10:35.673536"
+  },
+  "SBIN_1771258240": {
+    "symbol": "SBIN",
+    "direction": "DOWN",
+    "conviction": 52.56,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ff5f56; font-weight: bold;\">Weakening</span> (0.3%). Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 53% (<span style=\"color: #ffbd2e; font-weight: bold;\">Medium</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 78.7 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 7.2% YoY. Net Margin: 11.5%.\n\n**Fundamental Analysis**\n- Metrics: PE 13.547347850743112 (Sector 18.361339884928462), PB 2.1905835511438796\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #ff5f56; font-weight: bold;\">Bad</span>\n- Strengths: Company has delivered good profit growth of 37.4% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 20.0%\n- Weaknesses: Company has low interest coverage ratio.; Contingent liabilities of Rs.27,32,684 Cr.\n- Efficiency: ROCE 6.37%, ROE 17.3%\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 18.3,
+      "AI Model": 24.6,
+      "Fundamental": 8.0,
+      "Analyst": 0
+    },
+    "entry": 1208.1,
+    "target1": 1139.99,
+    "target2": 1105.93,
+    "sl": 1242.16,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "id": "SBIN_1771258240",
+    "created_at": "2026-02-16T16:10:40.767036",
+    "status": "active",
+    "expires_at": "2026-02-16T20:10:40.767039"
   }
 }

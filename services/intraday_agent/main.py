@@ -29,11 +29,11 @@ MARKET_DATA_URL = os.getenv("MARKET_DATA_URL", "http://market-data-service:8000"
 CHART_ANALYSIS_URL = os.getenv("CHART_ANALYSIS_URL", "http://chart-analysis-service:8000")
 
 # Agent parameters
-AGENT_LOOP_INTERVAL = int(os.getenv("AGENT_LOOP_INTERVAL", "30"))       # seconds
-MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "10"))
+AGENT_LOOP_INTERVAL = int(os.getenv("AGENT_LOOP_INTERVAL", "15"))       # seconds — faster monitoring for intraday
+MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "5"))                     # fewer positions for tighter focus
 MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "50000"))
-MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "15"))
-TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "1.0"))  # 1% move triggers trailing
+MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "40"))  # higher conviction for intraday
+TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "0.5"))  # 0.5% — tighter trailing for intraday
 MARKET_OPEN = dtime(9, 20)   # Start trading at 9:20 AM IST (skip first 5 min volatility)
 MARKET_CLOSE = dtime(15, 15)
 SQUARE_OFF_TIME = dtime(15, 10)  # Square off 5 min before close
@@ -154,24 +154,40 @@ class IntradayAgent:
             trade_type = "BUY"
             # Limit order: entry at LTP + 0.1% (slightly above to fill)
             entry = round(ltp * (1 + LIMIT_ORDER_OFFSET_PCT), 2)
-            target = rec.get("target1") or rec.get("target") or entry * 1.02
-            sl = rec.get("sl") or entry * 0.99
+            target = rec.get("target1") or rec.get("target") or entry * 1.012  # 1.2% default target (intraday)
+            sl = rec.get("sl") or entry * 0.993                                # 0.7% default SL (intraday)
+            # Cap SL to max 1.5% from entry for intraday
+            max_sl = entry * 0.985
+            if sl < max_sl:
+                sl = max_sl
+            # Cap target to max 3% from entry for intraday
+            max_target = entry * 1.03
+            if target > max_target:
+                target = max_target
             # Ensure target above entry, SL below
             if target <= entry:
-                target = entry * 1.02
+                target = entry * 1.012
             if sl >= entry:
-                sl = entry * 0.99
+                sl = entry * 0.993
         elif is_bearish:
             trade_type = "SELL"
             # Limit order: entry at LTP - 0.1% (slightly below to fill)
             entry = round(ltp * (1 - LIMIT_ORDER_OFFSET_PCT), 2)
-            target = rec.get("target1") or rec.get("target") or entry * 0.98
-            sl = rec.get("sl") or entry * 1.01
+            target = rec.get("target1") or rec.get("target") or entry * 0.988  # 1.2% default target (intraday)
+            sl = rec.get("sl") or entry * 1.007                                # 0.7% default SL (intraday)
+            # Cap SL to max 1.5% from entry for intraday
+            max_sl = entry * 1.015
+            if sl > max_sl:
+                sl = max_sl
+            # Cap target to max 3% from entry for intraday
+            max_target = entry * 0.97
+            if target < max_target:
+                target = max_target
             # Ensure target below entry, SL above
             if target >= entry:
-                target = entry * 0.98
+                target = entry * 0.988
             if sl <= entry:
-                sl = entry * 1.01
+                sl = entry * 1.007
         else:
             self.log_action("SKIP_NEUTRAL", symbol, f"Direction: {direction}")
             return False

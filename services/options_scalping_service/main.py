@@ -39,14 +39,14 @@ IST = pytz.timezone("Asia/Kolkata")
 # Constants
 # ──────────────────────────────────────────────────────────────────
 NIFTY_LOT_SIZE = 65          # 2026 lot size
-SL_PCT = 0.0015              # 0.15% of spot
-TARGET_PCT = 0.003           # 0.30% of spot
+SL_PCT = 0.0008              # 0.08% of spot — tight for scalping (3-4 pts)
+TARGET_PCT = 0.0015           # 0.15% of spot — quick target (6-7 pts)
 SLIPPAGE_MIN = 0.0001        # 0.01%
 SLIPPAGE_MAX = 0.0003        # 0.03%
 LATENCY_MIN_MS = 50
 LATENCY_MAX_MS = 200
 INITIAL_CAPITAL = 100000.0   # ₹1,00,000 paper trading capital
-MAX_TRADES_PER_DAY = 20
+MAX_TRADES_PER_DAY = 30      # More trades — scalping is about many small wins
 DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 TRADES_FILE = os.path.join(DATA_DIR, "options_paper_trades.json")
 LEARNING_FILE = os.path.join(DATA_DIR, "options_learning.json")
@@ -248,11 +248,31 @@ class PaperTradingEngine:
         total = len(self.trade_history)
         win_rate = (len(wins) / total * 100) if total > 0 else 0
 
+        # Calculate realized P&L (from closed trades)
+        realized_pnl = round(sum(t.get("pnl", 0) for t in self.trade_history), 2)
+
+        # Calculate unrealized P&L for active trades with current LTP
+        unrealized_pnl = 0.0
+        for trade in self.active_trades:
+            spot = get_nifty_spot()
+            if spot:
+                current_premium = estimate_option_premium(spot, trade["strike"], trade["direction"])
+                trade["ltp"] = round(current_premium, 2)
+                trade["unrealized_pnl"] = round((current_premium - trade["entry_premium"]) * trade["quantity"], 2)
+                trade["unrealized_pnl_pct"] = round(((current_premium - trade["entry_premium"]) / trade["entry_premium"]) * 100, 2)
+                unrealized_pnl += trade["unrealized_pnl"]
+            else:
+                trade["ltp"] = trade.get("entry_premium", 0)
+                trade["unrealized_pnl"] = 0.0
+                trade["unrealized_pnl_pct"] = 0.0
+
         return {
             "capital": round(self.capital, 2),
             "initial_capital": INITIAL_CAPITAL,
             "total_pnl": round(self.total_pnl, 2),
             "daily_pnl": round(self.daily_pnl, 2),
+            "realized_pnl": realized_pnl,
+            "unrealized_pnl": round(unrealized_pnl, 2),
             "active_trades": self.active_trades,
             "trade_history": self.trade_history[-50:],  # Last 50
             "stats": {
@@ -849,7 +869,7 @@ def _get_next_thursday() -> str:
 # ──────────────────────────────────────────────────────────────────
 # Auto-Trade Background Loop
 # ──────────────────────────────────────────────────────────────────
-SCAN_INTERVAL_SEC = 60  # scan every 60 seconds
+SCAN_INTERVAL_SEC = 30  # scan every 30 seconds for faster momentum detection
 
 
 def _is_market_open() -> bool:
