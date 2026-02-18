@@ -159,8 +159,8 @@ class PaperBroker(BaseBroker):
     """Paper trading — simulates order fills with slippage."""
 
     def __init__(self):
-        import numpy as np
-        self.np = np
+        import random as _random
+        self._rng = _random
         self._orders: Dict[str, dict] = {}
 
     async def place_order(
@@ -176,16 +176,16 @@ class PaperBroker(BaseBroker):
         tag: str = "",
     ) -> OrderResult:
         # Simulate slippage (0.01% - 0.03%)
-        slippage = self.np.random.uniform(0.0001, 0.0003)
+        slippage = self._rng.uniform(0.0001, 0.0003)
         if side == OrderSide.BUY:
             fill_price = round(price * (1 + slippage), 2)
         else:
             fill_price = round(price * (1 - slippage), 2)
 
-        order_id = f"PAPER-{datetime.now(IST).strftime('%H%M%S')}-{self.np.random.randint(1000, 9999)}"
+        order_id = f"PAPER-{datetime.now(IST).strftime('%H%M%S')}-{self._rng.randint(1000, 9999)}"
 
         # Simulate latency
-        await asyncio.sleep(self.np.random.uniform(0.05, 0.15))
+        await asyncio.sleep(self._rng.uniform(0.05, 0.15))
 
         self._orders[order_id] = {
             "order_id": order_id,

@@ -25,7 +25,8 @@ class TestLevelCalculatorUp:
 
     def test_stop_loss_uses_atr(self, calc):
         levels = calc.calculate_levels(current_price=100.0, atr=5.0, direction="UP")
-        assert levels["sl"] == pytest.approx(95.0, abs=0.01)
+        # Intraday mode: SL = 0.4×ATR capped at 1.5% of price → min(2.0, 1.5) = 1.5
+        assert levels["sl"] == pytest.approx(98.5, abs=0.01)
 
     def test_vix_widens_levels(self, calc):
         normal = calc.calculate_levels(current_price=1000.0, atr=20.0, direction="UP", vix=10.0)
@@ -60,7 +61,8 @@ class TestLevelCalculatorDown:
 
     def test_stop_loss_above_entry(self, calc):
         levels = calc.calculate_levels(current_price=100.0, atr=5.0, direction="DOWN")
-        assert levels["sl"] == pytest.approx(105.0, abs=0.01)
+        # Intraday mode: SL = 0.4×ATR capped at 1.5% of price → min(2.0, 1.5) = 1.5
+        assert levels["sl"] == pytest.approx(101.5, abs=0.01)
 
 
 class TestLevelCalculatorEdgeCases:
