@@ -22,11 +22,10 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Callable
 from dataclasses import dataclass, field
-
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("iceberg_order")
-IST = pytz.timezone("Asia/Kolkata")
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class IcebergStatus(str, Enum):

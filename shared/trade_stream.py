@@ -20,11 +20,10 @@ import os
 import uuid
 from datetime import datetime
 from typing import Callable, Dict, List, Any
-
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("trade_stream")
-IST = pytz.timezone("Asia/Kolkata")
+IST = ZoneInfo("Asia/Kolkata")
 
 # Kafka configuration
 KAFKA_BOOTSTRAP = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "")

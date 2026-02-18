@@ -18,11 +18,10 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
 from typing import Dict
-
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("broker")
-IST = pytz.timezone("Asia/Kolkata")
+IST = ZoneInfo("Asia/Kolkata")
 
 
 # ──────────────────────────────────────────────────────────────────
