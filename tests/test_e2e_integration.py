@@ -5,7 +5,7 @@ Tests the flow: TradeMessage → IcebergEngine → PaperBroker → TrailingStopL
 import asyncio
 import pytest
 from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailStrategy
-from shared.iceberg_order import IcebergEngine, IcebergStatus, SliceStatus
+from shared.iceberg_order import IcebergEngine, IcebergStatus
 from shared.broker_interface import PaperBroker, BrokerRouter, OrderSide
 from shared.trade_stream import TradeMessage, InMemoryTradeStream, TOPIC_TRADE_REQUEST
 from shared.models import BrokerType, BrokerConfig
@@ -79,7 +79,7 @@ class TestE2EOptionsTrade:
 
         sl_values = [state.current_sl]
         for p in prices:
-            new_sl = TrailingStopLossEngine.compute_new_sl(state, p, config)
+            TrailingStopLossEngine.compute_new_sl(state, p, config)
             sl_values.append(state.current_sl)
 
         # SL should have moved up from initial

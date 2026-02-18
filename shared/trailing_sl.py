@@ -14,7 +14,7 @@ Used by both Options Scalping Service and Intraday Stock Trading.
 """
 
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Optional
 from dataclasses import dataclass, field
 import logging
 

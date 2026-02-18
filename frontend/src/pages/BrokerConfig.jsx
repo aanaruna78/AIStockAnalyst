@@ -17,20 +17,26 @@ export default function BrokerConfig() {
   const [angelPassword, setAngelPassword] = useState('');
   const [angelTotp, setAngelTotp] = useState('');
 
+  const applyConfig = (data) => {
+    setConfig(data);
+    setBrokerType(data.broker_type || 'none');
+    setIsActive(data.is_active || false);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    loadConfig();
+    fetchBrokerConfig()
+      .then(applyConfig)
+      .catch(() => { setMessage('Failed to load broker config'); setLoading(false); });
   }, []);
 
   const loadConfig = async () => {
     try {
       const data = await fetchBrokerConfig();
-      setConfig(data);
-      setBrokerType(data.broker_type || 'none');
-      setIsActive(data.is_active || false);
+      applyConfig(data);
     } catch {
       setMessage('Failed to load broker config');
     }
-    setLoading(false);
   };
 
   const handleSave = async () => {

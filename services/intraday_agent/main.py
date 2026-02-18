@@ -25,7 +25,7 @@ import sys
 
 # Add project root to sys.path for shared imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailStrategy
 from shared.iceberg_order import IcebergEngine
 
 # ─── Configuration ───────────────────────────────────────────────

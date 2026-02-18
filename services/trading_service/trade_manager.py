@@ -10,7 +10,7 @@ import pytz
 # Fix path to import shared models
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from shared.models import Trade, TradeType, TradeStatus, Portfolio
-from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailStrategy
 from shared.iceberg_order import IcebergEngine
 from failed_trade_log import log_failed_trade, get_failed_trades_for_symbol
 

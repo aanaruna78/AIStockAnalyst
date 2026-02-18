@@ -2,13 +2,10 @@
 Integration tests for shared/iceberg_order.py — Iceberg Order Engine.
 Tests order splitting, execution, serialization, and edge cases.
 """
-import asyncio
 import pytest
 from shared.iceberg_order import (
     IcebergEngine,
-    IcebergOrder,
     IcebergStatus,
-    OrderSlice,
     SliceStatus,
 )
 

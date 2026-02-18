@@ -17,7 +17,7 @@ Paper Trading:
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 import pytz
 import json
@@ -27,15 +27,12 @@ import re
 import requests
 import numpy as np
 import threading
-import asyncio
 import time as _time
 
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
-from shared.iceberg_order import IcebergEngine, IcebergOrder
-from shared.broker_interface import BrokerRouter, PaperBroker, OrderSide, OrderType as BrokerOrderType, ProductType, ExchangeType
-from shared.trade_stream import trade_stream, TradeMessage, TOPIC_TRADE_REQUEST, TOPIC_TRADE_STATUS
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailStrategy
+from shared.iceberg_order import IcebergEngine
 
 app = FastAPI(title="SignalForge Options Scalping Service")
 logging.basicConfig(level=logging.INFO)

@@ -19,7 +19,7 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Optional, Callable, Dict, List, Any
+from typing import Callable, Dict, List, Any
 
 import pytz
 

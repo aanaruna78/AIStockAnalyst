@@ -17,7 +17,7 @@ import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Dict, Any
+from typing import Dict
 
 import pytz
 

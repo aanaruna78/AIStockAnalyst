@@ -2,10 +2,8 @@
 Integration tests for shared/broker_interface.py — Broker Abstraction Layer.
 Tests PaperBroker, BrokerRouter, and serialization.
 """
-import asyncio
 import pytest
 from shared.broker_interface import (
-    BaseBroker,
     PaperBroker,
     BrokerRouter,
     BrokerType,

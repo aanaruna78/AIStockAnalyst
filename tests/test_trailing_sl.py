@@ -2,7 +2,6 @@
 Integration tests for shared/trailing_sl.py — Trailing Stop Loss Engine.
 Tests all 4 strategies: PERCENTAGE, ATR_BASED, STEP_TRAIL, HYBRID.
 """
-import pytest
 from shared.trailing_sl import (
     TrailingStopLossEngine,
     TrailConfig,

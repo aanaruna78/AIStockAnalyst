@@ -14,13 +14,17 @@ export default function TradeReports() {
     try {
       const data = await fetchTradeReport(startDate || null, endDate || null);
       setReport(data);
-    } catch (e) {
+    } catch {
       setError('Failed to load trade report');
     }
     setLoading(false);
   };
 
-  useEffect(() => { loadReport(); }, []);
+  useEffect(() => {
+    fetchTradeReport(null, null)
+      .then(data => { setReport(data); setLoading(false); })
+      .catch(() => { setError('Failed to load trade report'); setLoading(false); });
+  }, []);
 
   const pnlColor = (val) => val > 0 ? '#27c93f' : val < 0 ? '#ff5f56' : '#888';
 
