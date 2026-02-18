@@ -5,5 +5,7 @@
   "total_pnl": 0.0,
   "daily_pnl": 0.0,
   "day_trade_count": 0,
-  "current_date": "2026-02-16"
+  "current_date": "2026-02-18",
+  "trail_states": {},
+  "iceberg_orders": []
 }

@@ -12,13 +12,32 @@ from datetime import datetime
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
-from trade_manager import TradeManager
+from trade_manager import TradeManager, equity_risk_engine, equity_metrics, equity_learning
 from shared.models import Portfolio
 from shared.config import settings
 from scheduler_job import start_scheduler
 from model_report import generate_daily_report, get_daily_report, save_feedback, get_all_feedback
+from shared.market_data_store import MarketDataStore
+from shared.regime_engine import RegimeEngine
+from shared.momentum_signal import MomentumSignalEngine
 
 trade_manager = TradeManager()
+
+# v2: Equity momentum engines
+equity_market_stores: dict = {}  # per-symbol MarketDataStore
+equity_regime_engine = RegimeEngine(atr_min_threshold=3.0)
+equity_momentum_engine = MomentumSignalEngine()
+
+IST = pytz.timezone("Asia/Kolkata")
+
+def _get_or_create_store(symbol: str) -> MarketDataStore:
+    if symbol not in equity_market_stores:
+        equity_market_stores[symbol] = MarketDataStore(symbol=symbol)
+    return equity_market_stores[symbol]
+
+def _minute_of_day() -> int:
+    now = datetime.now(IST)
+    return now.hour * 60 + now.minute
 
 # Background Task: Price Monitor
 async def price_monitor_loop():
@@ -423,6 +442,92 @@ async def trailing_sl_status():
 async def iceberg_history():
     """Return iceberg order history."""
     return trade_manager.get_iceberg_history()
+
+
+# ─────────────────────────────────────────────────────────
+# V2: MOMENTUM ENDPOINTS (Equity)
+# ─────────────────────────────────────────────────────────
+
+@app.get("/regime")
+async def get_regime(symbol: str = "NIFTY"):
+    """Current market regime for a symbol."""
+    store = _get_or_create_store(symbol)
+    ind = store.indicators
+    spot = ind.spot or 0
+    if spot <= 0:
+        return {"regime": "UNKNOWN", "message": "No candle data"}
+    candles = store.get_candles(n=3)
+    range_3 = 0
+    if len(candles) >= 3:
+        range_3 = max(c.high for c in candles[-3:]) - min(c.low for c in candles[-3:])
+    result = equity_regime_engine.classify(
+        spot=spot,
+        vwap=ind.vwap if ind.vwap > 0 else spot,
+        vwap_slope=ind.vwap_slope,
+        atr=ind.atr_14 if ind.atr_14 > 0 else spot * 0.001,
+        minute_of_day=_minute_of_day(),
+        range_last_3=range_3,
+    )
+    return RegimeEngine.result_to_dict(result)
+
+
+@app.get("/signal/momentum")
+async def get_momentum_signal(symbol: str = "NIFTY"):
+    """Current momentum signal for a symbol."""
+    store = _get_or_create_store(symbol)
+    candles = store.get_candles()
+    if not candles:
+        return {"signal": None, "message": "No candle data"}
+    ind = store.indicators
+    avg_vol = sum(c.volume for c in candles) / max(1, len(candles))
+    signal = equity_momentum_engine.evaluate(
+        ind=ind, candles=candles, volume_avg=avg_vol, is_option=False,
+    )
+    return {
+        "symbol": symbol,
+        "direction": signal.direction.value,
+        "confidence": signal.confidence,
+        "breakout_level": signal.breakout_level,
+        "entry_mode": signal.entry_mode.value,
+        "is_filtered": signal.is_filtered,
+        "filter_reason": signal.filter_reason,
+        "reasons": signal.reasons,
+    }
+
+
+@app.get("/risk/status")
+async def risk_status():
+    """Global equity risk status."""
+    return equity_risk_engine.get_status()
+
+
+@app.get("/metrics/daily")
+async def daily_metrics():
+    """Daily equity performance metrics."""
+    today = datetime.now(IST).strftime("%Y-%m-%d")
+    report = equity_metrics.generate_daily_report(today)
+    from dataclasses import asdict
+    return asdict(report)
+
+
+@app.get("/profiles")
+async def get_profiles():
+    """Equity momentum profiles."""
+    return {"profiles": equity_learning.get_profiles()}
+
+
+@app.post("/profiles/select")
+async def select_profile(profile_id: str):
+    """Force a profile for testing."""
+    if equity_learning.force_profile(profile_id):
+        return {"status": "forced", "profile_id": profile_id}
+    raise HTTPException(status_code=404, detail=f"Profile {profile_id} not found")
+
+
+@app.get("/learning/bandit")
+async def bandit_stats():
+    """Equity bandit arm statistics."""
+    return equity_learning.get_bandit_stats()
 
 
 # ─────────────────────────────────────────────────────────

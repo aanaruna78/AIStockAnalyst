@@ -5539,7 +5539,7 @@
     "vix_multiplier": 1.0,
     "id": "ITC_1771241321",
     "created_at": "2026-02-16T11:28:41.465535",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T15:28:41.465537"
   },
   "RELIANCE_1771241902": {
@@ -6160,7 +6160,7 @@
     "vix_multiplier": 1.0,
     "id": "TCS_1771258231",
     "created_at": "2026-02-16T16:10:31.435833",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T20:10:31.435836"
   },
   "INFY_1771258235": {
@@ -6183,7 +6183,7 @@
     "vix_multiplier": 1.0,
     "id": "INFY_1771258235",
     "created_at": "2026-02-16T16:10:35.673533",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T20:10:35.673536"
   },
   "SBIN_1771258240": {
@@ -6206,7 +6206,103 @@
     "vix_multiplier": 1.0,
     "id": "SBIN_1771258240",
     "created_at": "2026-02-16T16:10:40.767036",
-    "status": "active",
+    "status": "replaced",
     "expires_at": "2026-02-16T20:10:40.767039"
+  },
+  "TCS_1771419743": {
+    "symbol": "TCS",
+    "direction": "UP",
+    "conviction": 64.41,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.06%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 64% (<span style=\"color: #27c93f; font-weight: bold;\">High</span>), driven primarily by Sentiment signals (80% bullish conviction). Key Indicators: RSI is 21.5 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 2.4% YoY. Net Margin: 18.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 20.60480975231201 (Sector 25.099101374237573), PB 10.26593751909576\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has a good return on equity (ROE) track record: 3 Years ROE 58.9%; Company has been maintaining a healthy dividend payout of 87.7%\n- Weaknesses: Stock is trading at 11.5 times its book value; The company has delivered a poor sales growth of 10.4% over past five years.\n- Efficiency: ROCE 78.4%, ROE 65.0%\n- Technical Outlook: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 17.4,
+      "AI Model": 11.3,
+      "Fundamental": 24.0,
+      "Analyst": 0
+    },
+    "entry": 2694.9,
+    "target1": 2775.0,
+    "target2": 2815.05,
+    "sl": 2654.85,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "mode": "intraday",
+    "id": "TCS_1771419743",
+    "created_at": "2026-02-18T13:02:23.503281",
+    "status": "active",
+    "expires_at": "2026-02-18T17:02:23.503447"
+  },
+  "INFY_1771419751": {
+    "symbol": "INFY",
+    "direction": "UP",
+    "conviction": 94.4,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.06%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 94% (<span style=\"color: #27c93f; font-weight: bold;\">High</span>), driven primarily by Sentiment signals (90% bullish conviction). Key Indicators: RSI is 13.5 (<span style=\"color: #27c93f; font-weight: bold;\">Oversold</span>). Sentiment Analysis: Motilal Oswal (BUY, Tgt 1850). Revenue Growth: 6.6% YoY. Net Margin: 15.8%.\n\n**Fundamental Analysis**\n- Metrics: PE 20.12142303904762 (Sector 25.099101374237573), PB 5.850508250763906\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company is almost debt free.; Stock is providing a good dividend yield of 3.13%.\n- Weaknesses: Stock is trading at 7.67 times its book value; The company has delivered a poor sales growth of 11.6% over past five years.\n- Efficiency: ROCE 40.6%, ROE 30.3%\n- Technical Outlook: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>\n",
+    "score_breakdown": {
+      "Sentiment": 89.5,
+      "Technical": 26.4,
+      "AI Model": 22.0,
+      "Fundamental": 46.0,
+      "Analyst": 27.0
+    },
+    "entry": 1373.7,
+    "target1": 1414.91,
+    "target2": 1435.52,
+    "sl": 1353.09,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "mode": "intraday",
+    "id": "INFY_1771419751",
+    "created_at": "2026-02-18T13:02:31.571663",
+    "status": "active",
+    "expires_at": "2026-02-18T17:02:31.571666"
+  },
+  "SBIN_1771419757": {
+    "symbol": "SBIN",
+    "direction": "DOWN",
+    "conviction": 54.48,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.06%). Signal: <span style=\"color: #ff5f56; font-weight: bold;\">SHORT</span> | AI Confidence: 54% (<span style=\"color: #ffbd2e; font-weight: bold;\">Medium</span>), driven primarily by Sentiment signals (80% bearish conviction). Key Indicators: RSI is 78.5 (<span style=\"color: #ff5f56; font-weight: bold;\">Overbought</span>). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 7.2% YoY. Net Margin: 11.5%.\n\n**Fundamental Analysis**\n- Metrics: PE 13.71462696653737 (Sector 18.57538906732479), PB 2.2176323051543334\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #ff5f56; font-weight: bold;\">Bad</span>\n- Strengths: Company has delivered good profit growth of 37.4% CAGR over last 5 years; Company has been maintaining a healthy dividend payout of 20.0%\n- Weaknesses: Company has low interest coverage ratio.; Contingent liabilities of Rs.27,32,684 Cr.\n- Efficiency: ROCE 6.37%, ROE 17.3%\n- Technical Outlook: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>\n",
+    "score_breakdown": {
+      "Sentiment": 80.0,
+      "Technical": 18.7,
+      "AI Model": 14.1,
+      "Fundamental": 8.0,
+      "Analyst": 0
+    },
+    "entry": 1218.9,
+    "target1": 1191.89,
+    "target2": 1178.38,
+    "sl": 1232.41,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "mode": "intraday",
+    "id": "SBIN_1771419757",
+    "created_at": "2026-02-18T13:02:37.030373",
+    "status": "active",
+    "expires_at": "2026-02-18T17:02:37.030376"
+  },
+  "ITC_1771419760": {
+    "symbol": "ITC",
+    "direction": "UP",
+    "conviction": 46.55,
+    "rationale": "Market Context: <span style=\"color: #ffbd2e; font-weight: bold;\">Choppy/Sideways</span> | Global: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span> | Rupee: <span style=\"color: #ffbd2e; font-weight: bold;\">Stable</span> (0.06%). Signal: <span style=\"color: #27c93f; font-weight: bold;\">LONG</span> | AI Confidence: 47% (<span style=\"color: #ffbd2e; font-weight: bold;\">Medium</span>), driven primarily by Fundamental signals (62% bullish conviction). Key Indicators: RSI is 65.4 (Neutral). Sentiment Analysis: Neutral (No major analyst/community signals detected). Revenue Growth: 4.7% YoY. Net Margin: 36.0%.\n\n**Fundamental Analysis**\n- Metrics: PE 11.64079144444697 (Sector 34.74602385083614), PB 5.792268498263514\n- Scorecard: Valuation <span style=\"color: #ff5f56; font-weight: bold;\">High</span>, Profitability <span style=\"color: #27c93f; font-weight: bold;\">High</span>, Entry <span style=\"color: #27c93f; font-weight: bold;\">Good</span>\n- Strengths: Company has reduced debt.; Company is almost debt free.\n- Weaknesses: The company has delivered a poor sales growth of 8.73% over past five years.; Earnings include an other income of Rs.17,929 Cr.\n- Efficiency: ROCE 36.9%, ROE 27.9%\n- Technical Outlook: <span style=\"color: #ffbd2e; font-weight: bold;\">Neutral</span>\n",
+    "score_breakdown": {
+      "Sentiment": 0,
+      "Technical": 0,
+      "AI Model": 2.3,
+      "Fundamental": 62.0,
+      "Analyst": 0
+    },
+    "entry": 332.45,
+    "target1": 339.26,
+    "target2": 342.66,
+    "sl": 329.05,
+    "rr": 2.0,
+    "vix_multiplier": 1.0,
+    "mode": "intraday",
+    "id": "ITC_1771419760",
+    "created_at": "2026-02-18T13:02:40.687096",
+    "status": "active",
+    "expires_at": "2026-02-18T17:02:40.687098"
   }
 }

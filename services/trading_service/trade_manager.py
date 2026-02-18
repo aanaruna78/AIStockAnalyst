@@ -12,6 +12,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"
 from shared.models import Trade, TradeType, TradeStatus, Portfolio
 from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailStrategy
 from shared.iceberg_order import IcebergEngine
+from shared.risk_engine import RiskEngine, RiskConfig, RiskMode
+from shared.metrics_engine import MetricsEngine, TradeMetrics
+from shared.self_learning import SelfLearningEngine
 from failed_trade_log import log_failed_trade, get_failed_trades_for_symbol
 
 # Robust path for data file — prefer env var, then /app/data (Docker), then local fallback
@@ -24,6 +27,24 @@ DATA_FILE = os.environ.get(
 INITIAL_CAPITAL = 100000.0  # ₹1,00,000 starting capital for paper trading
 INTRADAY_LEVERAGE = 3       # 3x margin leverage for intraday stocks
 ICEBERG_QTY_THRESHOLD = 500 # Use iceberg above this qty
+
+# v2: Equity ATR-based risk engine
+equity_risk_engine = RiskEngine(RiskConfig(
+    mode=RiskMode.EQUITY_ATR,
+    equity_sl_atr_mult=1.0,
+    equity_tp1_atr_mult=1.2,
+    equity_tp1_book_pct=0.55,
+    equity_runner_atr_mult=1.0,
+    equity_late_tighten_mult=0.8,
+    equity_max_trades_per_day=10,
+    daily_loss_cap_pct=0.02,
+    consecutive_loss_limit=3,
+    cooldown_seconds=1800,
+))
+
+# v2: Metrics + Learning engines
+equity_metrics = MetricsEngine(data_dir=os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "data")))
+equity_learning = SelfLearningEngine(data_dir=os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "data")))
 
 class TradeManager:
     def __init__(self):
@@ -249,6 +270,43 @@ class TradeManager:
 
         # Cleanup trailing SL state
         self._trail_states.pop(trade.id, None)
+
+        # v2: Record in risk engine + metrics + learning
+        equity_risk_engine.record_trade_result(pnl)
+        equity_risk_engine.remove_trade(trade.id)
+
+        # v2: Metrics recording
+        risk_state = equity_risk_engine.get_trade_state(trade.id)
+        mfe_val = risk_state.mfe if risk_state else 0
+        mae_val = risk_state.mae if risk_state else 0
+
+        equity_metrics.record_trade(TradeMetrics(
+            trade_id=trade.id,
+            regime=getattr(trade, '_regime', ''),
+            profile_id=getattr(trade, '_profile_id', ''),
+            breakout_level=getattr(trade, '_breakout_level', 0),
+            entry_mode=getattr(trade, '_entry_mode', ''),
+            pnl=pnl,
+            pnl_pct=pnl_percent,
+            mfe=mfe_val,
+            mae=mae_val,
+            spread_cost=0,
+            slippage_cost=0,
+            entry_time=trade.entry_time.isoformat() if trade.entry_time else "",
+            exit_time=trade.exit_time.isoformat() if trade.exit_time else "",
+            hold_seconds=(trade.exit_time - trade.entry_time).total_seconds() if trade.exit_time and trade.entry_time else 0,
+            exit_reason=reason,
+        ))
+
+        # v2: Learning engine update
+        capture = pnl / mfe_val if mfe_val > 0 and pnl > 0 else 0
+        equity_learning.record_trade_result(
+            profile_id=getattr(trade, '_profile_id', 'P3_MID_TREND'),
+            pnl=pnl,
+            drawdown=mae_val,
+            regime=getattr(trade, '_regime', ''),
+            mfe_capture=capture,
+        )
 
         self.save_state()
         side_label = "SHORT" if trade.type == TradeType.SELL else "LONG"
