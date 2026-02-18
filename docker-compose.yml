@@ -213,6 +213,7 @@ services:
       - REC_ENGINE_URL=http://recommendation-engine:8000
       - TRADING_SERVICE_URL=http://trading-service:8000
       - PAPER_TRADES_FILE=/app/data/paper_trades.json
+      - DATA_DIR=/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
