@@ -42,7 +42,7 @@ const RecommendationDetail = () => {
             </Button>
 
             <Grid container spacing={4}>
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Box sx={{ mb: 4 }}>
                         <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
                             <Typography variant="h3" fontWeight={700}>{rec.symbol}</Typography>
@@ -76,7 +76,7 @@ const RecommendationDetail = () => {
                     </Stack>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Stack spacing={3}>
                         <Card>
                             <CardContent>

@@ -21,6 +21,12 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel
 from enum import Enum
 import pytz
+import sys
+
+# Add project root to sys.path for shared imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
+from shared.iceberg_order import IcebergEngine
 
 # ─── Configuration ───────────────────────────────────────────────
 TRADING_SERVICE_URL = os.getenv("TRADING_SERVICE_URL", "http://trading-service:8000")
@@ -34,6 +40,8 @@ MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "5"))                     # fewer
 MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "50000"))
 MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "40"))  # higher conviction for intraday
 TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "0.5"))  # 0.5% — tighter trailing for intraday
+INTRADAY_LEVERAGE = 3        # 3x margin leverage for intraday stocks
+ICEBERG_QTY_THRESHOLD = 500  # Use iceberg above this qty
 MARKET_OPEN = dtime(9, 20)   # Start trading at 9:20 AM IST (skip first 5 min volatility)
 MARKET_CLOSE = dtime(15, 15)
 SQUARE_OFF_TIME = dtime(15, 10)  # Square off 5 min before close
@@ -78,6 +86,17 @@ class IntradayAgent:
         self.last_check = None
         self.running = False
         self._last_reset_date = None  # Track daily reset
+        # Trailing SL engine config & state tracking
+        self._trail_config = TrailConfig(
+            strategy=TrailStrategy.HYBRID,
+            trail_pct=0.5,
+            activation_pct=0.3,
+            step_size_pct=0.5,
+            step_lock_pct=0.3,
+            breakeven_trigger_pct=0.5,
+            min_trail_pct=0.2,
+        )
+        self._trail_states: Dict[str, dict] = {}  # trade_id -> trail state dict
 
     def is_market_hours(self) -> bool:
         """Check if current time is within Indian market hours (9:20-15:15 IST)."""
@@ -137,8 +156,8 @@ class IntradayAgent:
 
     async def execute_trade(self, rec: Dict) -> bool:
         """Execute a specific trade via the trading service.
-        Uses limit order at +0.1% above LTP (BUY) or -0.1% below LTP (SELL)
-        to avoid catching stale/wrong prices from data feeds.
+        Uses limit order at +0.1% above LTP (BUY) or -0.1% below LTP (SELL).
+        Applies 3x intraday leverage and iceberg ordering for large quantities.
         """
         symbol = rec.get("symbol", "")
         direction = rec.get("direction", "")
@@ -194,7 +213,20 @@ class IntradayAgent:
 
         conviction = rec.get("conviction", 0)
         rec.get("rationale", "") or rec.get("summary", "")
-        quantity = max(1, int(MAX_CAPITAL_PER_TRADE / entry))
+        # Apply 3x intraday leverage
+        base_qty = max(1, int(MAX_CAPITAL_PER_TRADE / entry))
+        quantity = base_qty * INTRADAY_LEVERAGE
+
+        # Log iceberg info if large qty
+        if quantity > ICEBERG_QTY_THRESHOLD:
+            iceberg = IcebergEngine.create_stock_iceberg(
+                symbol=symbol,
+                side=trade_type,
+                total_qty=quantity,
+                price=entry,
+            )
+            self.log_action("ICEBERG_ORDER", symbol,
+                f"Qty {quantity} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity}")
 
         try:
             async with httpx.AsyncClient(timeout=15) as client:
@@ -212,8 +244,17 @@ class IntradayAgent:
                 )
                 if resp.status_code == 200:
                     self.trades_today += 1
+                    # Initialize trailing SL state for the new trade
+                    trade_data = resp.json()
+                    trade_id = trade_data.get("id", "")
+                    if trade_id:
+                        trail_state = TrailingStopLossEngine.create_state(
+                            entry_price=entry, initial_sl=sl,
+                            is_long=(trade_type == "BUY"),
+                        )
+                        self._trail_states[trade_id] = TrailingStopLossEngine.state_to_dict(trail_state)
                     self.log_action("LIMIT_ORDER_PLACED", symbol,
-                        f"{trade_type} @ {entry} (LTP: {ltp}, +0.1% offset) | T: {round(target,2)} | SL: {round(sl,2)} | Qty: {quantity}")
+                        f"{trade_type} @ {entry} (LTP: {ltp}, +0.1% offset) | T: {round(target,2)} | SL: {round(sl,2)} | Qty: {quantity} (3x lev)")
                     return True
                 else:
                     detail = resp.text[:200]
@@ -278,7 +319,9 @@ class IntradayAgent:
         return False
 
     async def update_trailing_sl(self, trade: Dict) -> bool:
-        """Adjust the stop-loss closer to the current price to lock in profits."""
+        """Adjust stop-loss using the shared TrailingStopLossEngine (HYBRID strategy).
+        Dynamically computes new SL based on current price movement.
+        """
         trade_id = trade.get("id", "")
         symbol = trade.get("symbol", "")
         current_price = trade.get("current_price", 0) or 0
@@ -289,35 +332,40 @@ class IntradayAgent:
         if current_price <= 0 or entry_price <= 0:
             return False
 
-        if trade_type == "SELL":
-            # SHORT: price moved down in our favor → trail SL down
-            # New SL = current_price + 0.5% buffer (above current price)
-            profit_move = entry_price - current_price
-            if profit_move <= 0:
-                return False  # Not in profit
-            new_sl = round(current_price * 1.005, 2)  # 0.5% above current price
-            # Only move SL if it's tighter (lower) than current SL
-            if new_sl >= old_sl:
-                return False  # Would widen SL, not tighten
+        # Get or create trail state for this trade
+        trail_dict = self._trail_states.get(trade_id)
+        if not trail_dict:
+            # First time — initialize trail state
+            trail_state = TrailingStopLossEngine.create_state(
+                entry_price=entry_price,
+                initial_sl=old_sl,
+                is_long=(trade_type != "SELL"),
+            )
         else:
-            # LONG/BUY: price moved up in our favor → trail SL up
-            profit_move = current_price - entry_price
-            if profit_move <= 0:
-                return False  # Not in profit
-            new_sl = round(current_price * 0.995, 2)  # 0.5% below current price
-            # Only move SL if it's tighter (higher) than current SL
-            if new_sl <= old_sl:
-                return False  # Would widen SL, not tighten
+            trail_state = TrailingStopLossEngine.state_from_dict(trail_dict)
+
+        # Compute new SL using the engine
+        new_sl = TrailingStopLossEngine.compute_new_sl(
+            config=self._trail_config,
+            state=trail_state,
+            current_price=current_price,
+        )
+
+        # Persist trail state
+        self._trail_states[trade_id] = TrailingStopLossEngine.state_to_dict(trail_state)
+
+        if not new_sl or round(new_sl, 2) == round(old_sl, 2):
+            return False
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.post(
                     f"{TRADING_SERVICE_URL}/trade/update-sl/{trade_id}",
-                    params={"new_sl": new_sl}
+                    params={"new_sl": round(new_sl, 2)}
                 )
                 if resp.status_code == 200:
                     self.log_action("TRAILING_SL_UPDATED", symbol,
-                        f"SL moved: {old_sl} → {new_sl} (price: {current_price})")
+                        f"SL moved: {old_sl} → {round(new_sl, 2)} (price: {current_price}) [HYBRID engine]")
                     return True
         except Exception as e:
             self.log_action("TRAILING_SL_ERROR", symbol, str(e))
@@ -576,6 +624,7 @@ async def reset_agent():
     agent.trades_today = 0
     agent.processed_signals.clear()
     agent.actions_log.clear()
+    agent._trail_states.clear()
     agent.state = AgentState.IDLE
     agent.log_action("RESET", detail="Agent state reset for new session")
     return {"status": "reset"}

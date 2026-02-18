@@ -280,4 +280,59 @@ export const resetLearning = async () => {
     return data;
 };
 
+
+// ─── Trailing SL & Iceberg ──────────────────────────────────────
+
+export const fetchTrailingSLStatus = async () => {
+    const { data } = await api.get('/trading/trailing-sl/status');
+    return data;
+};
+
+export const fetchIcebergHistory = async () => {
+    const { data } = await api.get('/trading/iceberg/history');
+    return data;
+};
+
+export const fetchOptionsTrailingSL = async () => {
+    const { data } = await api.get('/options/trailing-sl/status');
+    return data;
+};
+
+export const fetchOptionsIcebergHistory = async () => {
+    const { data } = await api.get('/options/iceberg/history');
+    return data;
+};
+
+export const updateTrailingSL = async (tradeId, newSl) => {
+    const { data } = await api.post(`/trading/trade/update-sl/${tradeId}`, null, {
+        params: { new_sl: newSl }
+    });
+    return data;
+};
+
+
+// ─── Trade Reports ──────────────────────────────────────────────
+
+export const fetchTradeReport = async (startDate = null, endDate = null) => {
+    const params = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    const { data } = await api.get('/trading/reports/trades', { params });
+    return data;
+};
+
+
+// ─── Broker Configuration ───────────────────────────────────────
+
+export const fetchBrokerConfig = async () => {
+    const { data } = await api.get('/auth/broker-config');
+    return data;
+};
+
+export const updateBrokerConfig = async (config) => {
+    const { data } = await api.post('/auth/broker-config', config);
+    return data;
+};
+
+
 export default api;

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from shared.models import (
-    User, UserCreate, UserProfile, UserPreferences,
+    User, UserCreate, UserProfile, UserPreferences, BrokerConfig,
     UserRegister, OTPVerifyRequest, OTPResendRequest, LoginRequest, PendingUser,
 )
 from shared.config import settings
@@ -403,4 +403,34 @@ async def admin_user_audit(user_email: str, admin: User = Depends(require_admin)
         "onboarded": target.onboarded,
         "preferences": target.preferences.model_dump() if target.preferences else {},
         "login_history": target.login_history
+    }
+
+
+# ─── Broker Configuration ─────────────────────────────────
+
+@router.get("/broker-config")
+async def get_broker_config(user: User = Depends(get_current_user)):
+    """Get user's broker configuration (credentials masked)."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    config = user.broker_config
+    # Mask sensitive fields
+    return {
+        "broker_type": config.broker_type,
+        "is_active": config.is_active,
+        "dhan_configured": bool(config.dhan_client_id and config.dhan_access_token),
+        "angelone_configured": bool(config.angelone_api_key and config.angelone_client_id),
+    }
+
+@router.post("/broker-config")
+async def update_broker_config(config: BrokerConfig, user: User = Depends(get_current_user)):
+    """Update user's broker configuration."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user.broker_config = config
+    user_store.save(user)
+    return {
+        "status": "success",
+        "broker_type": config.broker_type,
+        "is_active": config.is_active,
     }

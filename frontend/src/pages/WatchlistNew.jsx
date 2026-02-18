@@ -89,7 +89,7 @@ const Watchlist = () => {
             {loading ? (
                 <Grid container spacing={2}>
                     {[1, 2, 3, 4].map(i => (
-                        <Grid item xs={12} sm={6} md={4} key={i}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={i}>
                             <Skeleton variant="rectangular" height={160} sx={{ borderRadius: 4 }} />
                         </Grid>
                     ))}
@@ -118,7 +118,7 @@ const Watchlist = () => {
                         const conviction = hasSignal ? (rec.conviction || rec.confidence || 0) : 0;
 
                         return (
-                            <Grid item xs={12} sm={6} md={4} key={symbol}>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={symbol}>
                                 <Card sx={{
                                     position: 'relative',
                                     '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 6px 20px ${alpha(dirColor, 0.12)}` },
@@ -153,11 +153,11 @@ const Watchlist = () => {
                                             <>
                                                 <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>{formatINR(rec.price || rec.entry)}</Typography>
                                                 <Grid container spacing={1} sx={{ mb: 1.5 }}>
-                                                    <Grid item xs={6}>
+                                                    <Grid size={6}>
                                                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>TARGET</Typography>
                                                         <Typography variant="body2" fontWeight={700} sx={{ color: '#10b981' }}>{formatINR(rec.target1 || rec.target)}</Typography>
                                                     </Grid>
-                                                    <Grid item xs={6} sx={{ textAlign: 'right' }}>
+                                                    <Grid size={6} sx={{ textAlign: 'right' }}>
                                                         <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>STOP LOSS</Typography>
                                                         <Typography variant="body2" fontWeight={700} sx={{ color: '#ef4444' }}>{formatINR(rec.sl)}</Typography>
                                                     </Grid>

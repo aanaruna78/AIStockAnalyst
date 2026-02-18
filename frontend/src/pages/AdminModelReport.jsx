@@ -82,7 +82,7 @@ const AdminModelReport = () => {
 
             {/* Summary Stats */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} md={3}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Typography variant="h3" fontWeight={800}>{summary.total_trades}</Typography>
@@ -90,7 +90,7 @@ const AdminModelReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={3}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, borderColor: (t) => alpha(t.palette.success.main, 0.3) }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Stack direction="row" justifyContent="center" alignItems="center" gap={0.5}>
@@ -101,7 +101,7 @@ const AdminModelReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={3}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, borderColor: (t) => alpha(t.palette.error.main, 0.3) }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Stack direction="row" justifyContent="center" alignItems="center" gap={0.5}>
@@ -112,7 +112,7 @@ const AdminModelReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={3}>
+                <Grid size={{ xs: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Typography variant="h3" fontWeight={800}
@@ -128,7 +128,7 @@ const AdminModelReport = () => {
 
             {/* P&L + Failure Stats */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent>
                             <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -142,7 +142,7 @@ const AdminModelReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent>
                             <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>

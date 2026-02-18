@@ -103,7 +103,7 @@ const AgentDashboard = () => {
                     { label: 'Pending Signals', value: pendingSignals.length, icon: <Zap size={18} />, color: '#818cf8' },
                     { label: 'Cash Balance', value: formatINR(portfolio?.cash_balance || 0, 0), icon: <ShieldCheck size={18} />, color: '#10b981' },
                 ].map((item) => (
-                    <Grid item xs={6} md={2} key={item.label}>
+                    <Grid size={{ xs: 6, md: 2 }} key={item.label}>
                         <Card>
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -119,7 +119,7 @@ const AgentDashboard = () => {
 
             <Grid container spacing={3}>
                 {/* Active Positions */}
-                <Grid item xs={12} lg={8}>
+                <Grid size={{ xs: 12, lg: 8 }}>
                     <Card>
                         <CardContent sx={{ p: 0 }}>
                             <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider' }}>
@@ -234,7 +234,7 @@ const AgentDashboard = () => {
                 </Grid>
 
                 {/* Sidebar: Pending Signals */}
-                <Grid item xs={12} lg={4}>
+                <Grid size={{ xs: 12, lg: 4 }}>
                     <Card>
                         <CardContent sx={{ p: 0 }}>
                             <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>

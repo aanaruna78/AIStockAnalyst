@@ -128,7 +128,7 @@ const OptionsScalping = () => {
 
             {/* ─── Top Stats Row ─────────────────────────────────── */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">NIFTY 50 Spot</Typography>
@@ -138,7 +138,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Capital</Typography>
@@ -153,7 +153,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={{
                         ...cardSx,
                         border: portfolio?.unrealized_pnl ? `1px solid ${portfolio.unrealized_pnl >= 0 ? alpha('#10b981', 0.4) : alpha('#ef4444', 0.3)}` : cardSx.border,
@@ -169,7 +169,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Realized P&L</Typography>
@@ -182,7 +182,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Today</Typography>
@@ -197,7 +197,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={cardSx} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Win Rate</Typography>
@@ -210,7 +210,7 @@ const OptionsScalping = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={{
                         ...cardSx,
                         border: `1px solid ${isEnabled ? alpha('#10b981', 0.4) : alpha('#ef4444', 0.3)}`,
@@ -241,7 +241,7 @@ const OptionsScalping = () => {
 
             <Grid container spacing={3}>
                 {/* ─── Left Column: Auto-Trade Status + Active Position ── */}
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                     {/* Auto-Trade Engine Status */}
                     <Paper sx={{ ...cardSx, p: 2, mb: 3 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
@@ -342,34 +342,34 @@ const OptionsScalping = () => {
                                         )}
                                     </Box>
                                     <Grid container spacing={1}>
-                                        <Grid item xs={3}>
+                                        <Grid size={3}>
                                             <Typography variant="caption" color="text.secondary">Entry</Typography>
                                             <Typography variant="body2" fontWeight={600}>{fmtINR(t.entry_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={3}>
+                                        <Grid size={3}>
                                             <Typography variant="caption" color="text.secondary">LTP</Typography>
                                             <Typography variant="body2" fontWeight={700}
                                                 sx={{ color: t.ltp > t.entry_premium ? '#10b981' : t.ltp < t.entry_premium ? '#ef4444' : 'text.primary' }}>
                                                 {t.ltp ? fmtINR(t.ltp) : '—'}
                                             </Typography>
                                         </Grid>
-                                        <Grid item xs={3}>
+                                        <Grid size={3}>
                                             <Typography variant="caption" color="text.secondary">SL</Typography>
                                             <Typography variant="body2" fontWeight={600} color="error.main">{fmtINR(t.sl_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={3}>
+                                        <Grid size={3}>
                                             <Typography variant="caption" color="text.secondary">Target</Typography>
                                             <Typography variant="body2" fontWeight={600} color="success.main">{fmtINR(t.target_premium)}</Typography>
                                         </Grid>
-                                        <Grid item xs={4}>
+                                        <Grid size={4}>
                                             <Typography variant="caption" color="text.secondary">Qty</Typography>
                                             <Typography variant="body2">{t.quantity}</Typography>
                                         </Grid>
-                                        <Grid item xs={4}>
+                                        <Grid size={4}>
                                             <Typography variant="caption" color="text.secondary">Slippage</Typography>
                                             <Typography variant="body2">{t.slippage_pct}%</Typography>
                                         </Grid>
-                                        <Grid item xs={4}>
+                                        <Grid size={4}>
                                             <Typography variant="caption" color="text.secondary">P&L %</Typography>
                                             <Typography variant="body2" fontWeight={700}
                                                 sx={{ color: pctColor(t.unrealized_pnl_pct || 0) }}>
@@ -391,7 +391,7 @@ const OptionsScalping = () => {
                 </Grid>
 
                 {/* ─── Right Column: Chain + Trade History ────────── */}
-                <Grid item xs={12} md={7}>
+                <Grid size={{ xs: 12, md: 7 }}>
                     {/* Options Chain */}
                     <Paper sx={{ ...cardSx, p: 2, mb: 3 }}>
                         <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1.5 }}>

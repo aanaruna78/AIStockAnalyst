@@ -19,6 +19,8 @@ import AgentDashboard from './pages/AgentDashboard';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import OptionsScalping from './pages/OptionsScalping';
+import TradeReports from './pages/TradeReports';
+import BrokerConfig from './pages/BrokerConfig';
 import { fetchAlerts } from './services/api';
 import { isBullish } from './utils/formatters';
 
@@ -88,6 +90,8 @@ function App() {
               <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
               <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
               <Route path="/options" element={<RequireAuth><OptionsScalping /></RequireAuth>} />
+              <Route path="/reports" element={<RequireAuth><TradeReports /></RequireAuth>} />
+              <Route path="/broker-config" element={<RequireAuth><BrokerConfig /></RequireAuth>} />
             </Routes>
           </Box>
 

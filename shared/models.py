@@ -54,6 +54,24 @@ class UserPreferences(BaseModel):
     preferred_sectors: List[str] = []
     max_allocation_per_trade: float = 0.1  # 10%
 
+class BrokerType(str, Enum):
+    NONE = "none"
+    DHAN = "dhan"
+    ANGELONE = "angelone"
+
+class BrokerConfig(BaseModel):
+    broker_type: BrokerType = BrokerType.NONE
+    # Dhan credentials
+    dhan_client_id: Optional[str] = None
+    dhan_access_token: Optional[str] = None
+    # AngelOne credentials
+    angelone_api_key: Optional[str] = None
+    angelone_client_id: Optional[str] = None
+    angelone_password: Optional[str] = None
+    angelone_totp_secret: Optional[str] = None
+    # Common
+    is_active: bool = False  # User must explicitly enable live trading
+
 class UserProfile(BaseModel):
     full_name: str
     email: str
@@ -68,6 +86,7 @@ class User(UserProfile):
     hashed_password: Optional[str] = None
     google_id: Optional[str] = None
     login_history: List[dict] = []
+    broker_config: BrokerConfig = BrokerConfig()
 
 class UserCreate(BaseModel):
     email: str

@@ -88,7 +88,7 @@ const AdminOptionsReport = () => {
 
             {/* Summary Stats */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Typography variant="h3" fontWeight={800}>{stats.total_trades || 0}</Typography>
@@ -96,7 +96,7 @@ const AdminOptionsReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, borderColor: (t) => alpha(t.palette.success.main, 0.3) }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Stack direction="row" justifyContent="center" alignItems="center" gap={0.5}>
@@ -107,7 +107,7 @@ const AdminOptionsReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, borderColor: (t) => alpha(t.palette.error.main, 0.3) }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Stack direction="row" justifyContent="center" alignItems="center" gap={0.5}>
@@ -118,7 +118,7 @@ const AdminOptionsReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Typography variant="h3" fontWeight={800}
@@ -130,7 +130,7 @@ const AdminOptionsReport = () => {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={6} md={2.4}>
+                <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3 }}>
                         <CardContent sx={{ textAlign: 'center', py: 2 }}>
                             <Typography variant="h3" fontWeight={800}
@@ -159,7 +159,7 @@ const AdminOptionsReport = () => {
                         </Box>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                                 <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1, display: 'block' }}>
                                     LEARNED THRESHOLDS
                                 </Typography>
@@ -182,7 +182,7 @@ const AdminOptionsReport = () => {
                                     </Box>
                                 </Stack>
                             </Grid>
-                            <Grid item xs={12} md={6}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                                 <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 1, display: 'block' }}>
                                     LEARNING PERFORMANCE (Last 20)
                                 </Typography>
@@ -347,7 +347,7 @@ const AdminOptionsReport = () => {
                                                                 <Eye size={14} /> Trade Indicators
                                                             </Typography>
                                                             <Grid container spacing={2}>
-                                                                <Grid item xs={12} md={6}>
+                                                                <Grid size={{ xs: 12, md: 6 }}>
                                                                     <Stack spacing={0.5}>
                                                                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                                                                             <Chip size="small" variant="outlined"
@@ -381,7 +381,7 @@ const AdminOptionsReport = () => {
                                                                         </Box>
                                                                     </Stack>
                                                                 </Grid>
-                                                                <Grid item xs={12} md={6}>
+                                                                <Grid size={{ xs: 12, md: 6 }}>
                                                                     <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ mb: 0.5, display: 'block' }}>
                                                                         SIGNAL REASONS
                                                                     </Typography>

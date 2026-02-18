@@ -3,7 +3,7 @@ import {
     AppBar, Toolbar, Typography, Box, Button, IconButton, Avatar, Menu, MenuItem,
     Tooltip, Divider, alpha, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText
 } from '@mui/material';
-import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap, Shield, Menu as MenuIcon, X, Target } from 'lucide-react';
+import { Sun, Moon, LogOut, User as UserIcon, Settings, Bell, TrendingUp, BarChart3, Bookmark, Bot, Zap, Shield, Menu as MenuIcon, X, Target, FileText } from 'lucide-react';
 import { useColorMode } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
@@ -15,6 +15,7 @@ const navItems = [
     { label: 'Alerts', path: '/alerts', icon: <Bell size={16} /> },
     { label: 'Agent', path: '/agent', icon: <Bot size={16} /> },
     { label: 'Options', path: '/options', icon: <Target size={16} /> },
+    { label: 'Reports', path: '/reports', icon: <FileText size={16} /> },
 ];
 
 const Header = () => {
@@ -151,6 +152,9 @@ const Header = () => {
                                 <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }}>
                                     <UserIcon size={16} style={{ marginRight: 12 }} /> Profile & Preferences
                                 </MenuItem>
+                                <MenuItem onClick={() => { handleMenuClose(); navigate('/broker-config'); }}>
+                                    <Settings size={16} style={{ marginRight: 12 }} /> Broker Config
+                                </MenuItem>
                                 <MenuItem onClick={handleLogout}>
                                     <LogOut size={16} style={{ marginRight: 12 }} /> Logout
                                 </MenuItem>
@@ -275,6 +279,16 @@ const Header = () => {
                                 <UserIcon size={16} />
                             </ListItemIcon>
                             <ListItemText primary="Profile & Preferences" primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }} />
+                        </ListItemButton>
+                    </ListItem>
+                )}
+                {user && (
+                    <ListItem disablePadding sx={{ mb: 0.5 }}>
+                        <ListItemButton onClick={() => handleMobileNav('/broker-config')} sx={{ borderRadius: 2, py: 1.25 }}>
+                            <ListItemIcon sx={{ minWidth: 36, color: 'text.secondary' }}>
+                                <Settings size={16} />
+                            </ListItemIcon>
+                            <ListItemText primary="Broker Config" primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 500 }} />
                         </ListItemButton>
                     </ListItem>
                 )}

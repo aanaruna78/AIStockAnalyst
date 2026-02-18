@@ -105,3 +105,15 @@ async def get_learning_stats():
 @router.post("/learning/reset")
 async def reset_learning():
     return await _proxy_post("/learning/reset")
+
+
+# ─── Trailing SL & Iceberg for Options ─────────────────
+
+@router.get("/trailing-sl/status")
+async def trailing_sl_status():
+    return await _proxy_get("/trailing-sl/status")
+
+
+@router.get("/iceberg/history")
+async def iceberg_history():
+    return await _proxy_get("/iceberg/history")

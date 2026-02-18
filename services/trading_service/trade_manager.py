@@ -10,6 +10,8 @@ import pytz
 # Fix path to import shared models
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from shared.models import Trade, TradeType, TradeStatus, Portfolio
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
+from shared.iceberg_order import IcebergEngine
 from failed_trade_log import log_failed_trade, get_failed_trades_for_symbol
 
 # Robust path for data file — prefer env var, then /app/data (Docker), then local fallback
@@ -20,10 +22,25 @@ DATA_FILE = os.environ.get(
 )
 
 INITIAL_CAPITAL = 100000.0  # ₹1,00,000 starting capital for paper trading
+INTRADAY_LEVERAGE = 3       # 3x margin leverage for intraday stocks
+ICEBERG_QTY_THRESHOLD = 500 # Use iceberg above this qty
 
 class TradeManager:
     def __init__(self):
         self.portfolio = Portfolio()
+        # Trailing SL states per trade
+        self._trail_states: Dict[str, dict] = {}
+        self._trail_config = TrailConfig(
+            strategy=TrailStrategy.HYBRID,
+            trail_pct=0.5,
+            activation_pct=0.3,
+            step_size_pct=0.5,
+            step_lock_pct=0.3,
+            breakeven_trigger_pct=0.5,
+            min_trail_pct=0.2,
+        )
+        # Iceberg order history
+        self.iceberg_orders: list = []
         self.load_state()
 
     def load_state(self):
@@ -34,6 +51,9 @@ class TradeManager:
                     data = json.load(f)
                     # Convert dicts back to Pydantic models
                     self.portfolio = Portfolio(**data)
+                    # Restore trailing SL states
+                    self._trail_states = data.get("_trail_states", {})
+                    self.iceberg_orders = data.get("iceberg_orders", [])
             except Exception as e:
                 print(f"[TradeManager] Error loading state: {e}")
                 self.portfolio = Portfolio()
@@ -44,8 +64,11 @@ class TradeManager:
         """Save portfolio state to JSON file."""
         try:
             os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
+            data = json.loads(self.portfolio.model_dump_json())
+            data["_trail_states"] = self._trail_states
+            data["iceberg_orders"] = self.iceberg_orders[-100:]  # Keep last 100
             with open(DATA_FILE, "w") as f:
-                f.write(self.portfolio.model_dump_json(indent=2))
+                json.dump(data, f, indent=2, default=str)
         except Exception as e:
             print(f"[TradeManager] Error saving state: {e}")
 
@@ -81,11 +104,13 @@ class TradeManager:
             print(f"[TradeManager] ⛔ BLOCKED: Conviction {conviction:.1f} < {MIN_CONVICTION} minimum for {symbol}.")
             return None
 
-        # Calculate quantity if not specified
+        # Calculate quantity if not specified — apply 3x intraday leverage
         if quantity <= 0:
-            quantity = int(20000 / entry_price)
-            if quantity < 1:
-                quantity = 1
+            base_qty = int(20000 / entry_price)
+            if base_qty < 1:
+                base_qty = 1
+            quantity = base_qty * INTRADAY_LEVERAGE
+            print(f"[TradeManager] 3x leverage: base {base_qty} → qty {quantity} for {symbol}")
 
         cost = quantity * entry_price
 
@@ -151,8 +176,34 @@ class TradeManager:
         )
 
         self.portfolio.active_trades.append(trade)
+
+        # --- Initialize trailing SL state for this trade ---
+        trail_state = TrailingStopLossEngine.create_state(
+            entry_price=entry_price,
+            initial_sl=stop_loss,
+            is_long=(t_type == TradeType.BUY),
+        )
+        self._trail_states[trade.id] = TrailingStopLossEngine.state_to_dict(trail_state)
+
+        # --- Iceberg order tracking (informational for paper trading) ---
+        if quantity > ICEBERG_QTY_THRESHOLD:
+            iceberg = IcebergEngine.create_stock_iceberg(
+                symbol=symbol,
+                side="BUY" if t_type == TradeType.BUY else "SELL",
+                total_qty=quantity,
+                price=entry_price,
+            )
+            self.iceberg_orders.append({
+                "trade_id": trade.id,
+                "symbol": symbol,
+                "total_qty": quantity,
+                "num_slices": len(iceberg.slices),
+                "created_at": datetime.now(ist).isoformat(),
+            })
+            print(f"[TradeManager] ICEBERG: {symbol} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity} each")
+
         self.save_state()
-        print(f"[TradeManager] {t_type.value} EXECUTED: {symbol} @ {entry_price} | Qty: {quantity} | Target: {target} | SL: {stop_loss}")
+        print(f"[TradeManager] {t_type.value} EXECUTED: {symbol} @ {entry_price} | Qty: {quantity} (3x lev) | Target: {target} | SL: {stop_loss}")
         return trade
 
     def close_trade(self, trade_id: str, exit_price: float, reason: str = "Manual"):
@@ -195,7 +246,10 @@ class TradeManager:
         self.portfolio.realized_pnl += pnl
         self.portfolio.active_trades.remove(trade)
         self.portfolio.trade_history.append(trade)
-        
+
+        # Cleanup trailing SL state
+        self._trail_states.pop(trade.id, None)
+
         self.save_state()
         side_label = "SHORT" if trade.type == TradeType.SELL else "LONG"
         print(f"[TradeManager] CLOSED {side_label} {trade.symbol} @ {exit_price}. P&L: {pnl:.2f} ({pnl_percent:.1f}%) | Reason: {reason}")
@@ -227,8 +281,24 @@ class TradeManager:
             if hit_target:
                 self.close_trade(trade.id, current_price, reason="Target Hit")
             elif hit_sl:
-                self.close_trade(trade.id, current_price, reason="Stop Loss Hit")
+                self.close_trade(trade.id, current_price, reason="Trailing SL Hit")
             else:
+                # --- Trailing SL: dynamically adjust stop loss ---
+                trail_dict = self._trail_states.get(trade.id)
+                if trail_dict:
+                    trail_state = TrailingStopLossEngine.state_from_dict(trail_dict)
+                    new_sl = TrailingStopLossEngine.compute_new_sl(
+                        config=self._trail_config,
+                        state=trail_state,
+                        current_price=current_price,
+                    )
+                    if new_sl and new_sl != trade.stop_loss:
+                        old_sl = trade.stop_loss
+                        trade.stop_loss = round(new_sl, 2)
+                        self._trail_states[trade.id] = TrailingStopLossEngine.state_to_dict(trail_state)
+                        side = "SHORT" if trade.type == TradeType.SELL else "LONG"
+                        print(f"[TradeManager] TRAIL SL {side} {trade.symbol}: {old_sl} → {new_sl:.2f} (price: {current_price})")
+
                 # Update unrealized P&L
                 trade.current_price = current_price
                 cost_value = trade.quantity * trade.entry_price
@@ -283,5 +353,21 @@ class TradeManager:
 
     def get_portfolio_summary(self):
         """Return full portfolio state with current Unrealized P&L calculation."""
-        # Note: In a real app, we'd fetch live prices here too, but for now we rely on the last pushed state
         return self.portfolio
+
+    def get_trailing_sl_status(self) -> dict:
+        """Return trailing SL state for all active trades."""
+        result = {}
+        for trade in self.portfolio.active_trades:
+            trail_dict = self._trail_states.get(trade.id)
+            result[trade.symbol] = {
+                "trade_id": trade.id,
+                "current_sl": trade.stop_loss,
+                "entry_price": trade.entry_price,
+                "trail_state": trail_dict,
+            }
+        return result
+
+    def get_iceberg_history(self) -> list:
+        """Return iceberg order history."""
+        return self.iceberg_orders

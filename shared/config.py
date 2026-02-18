@@ -106,6 +106,16 @@ class GlobalConfig(BaseSettings):
     PIPELINE_BATCH_SIZE: int = 5
     PIPELINE_LOOP_INTERVAL_SECONDS: int = 10800
 
+    # Kafka / Streaming (optional — falls back to in-memory queues)
+    KAFKA_BOOTSTRAP_SERVERS: Optional[str] = None  # e.g. "kafka:9092"
+    KAFKA_TRADE_TOPIC: str = "signalforge.trades.request"
+
+    # AngelOne API Configuration
+    ANGELONE_API_KEY: Optional[str] = None
+    ANGELONE_CLIENT_ID: Optional[str] = None
+    ANGELONE_PASSWORD: Optional[str] = None
+    ANGELONE_TOTP_SECRET: Optional[str] = None
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 # Singleton instance

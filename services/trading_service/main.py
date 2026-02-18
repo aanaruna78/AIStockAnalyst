@@ -409,6 +409,84 @@ async def api_failed_trades():
     }
 
 
+# ─────────────────────────────────────────────────────────
+# TRAILING SL & ICEBERG ENDPOINTS
+# ─────────────────────────────────────────────────────────
+
+@app.get("/trailing-sl/status")
+async def trailing_sl_status():
+    """Return trailing SL state for all active trades."""
+    return trade_manager.get_trailing_sl_status()
+
+
+@app.get("/iceberg/history")
+async def iceberg_history():
+    """Return iceberg order history."""
+    return trade_manager.get_iceberg_history()
+
+
+# ─────────────────────────────────────────────────────────
+# TRADE REPORTING (date-range filtering)
+# ─────────────────────────────────────────────────────────
+
+@app.get("/reports/trades")
+async def trade_report(start_date: str = None, end_date: str = None):
+    """Trade performance report with optional date range.
+    Dates in YYYY-MM-DD format.
+    """
+    from datetime import date as dt_date
+    trades = trade_manager.portfolio.trade_history
+
+    # Filter by date range
+    filtered = []
+    for t in trades:
+        t_date = None
+        if t.exit_time:
+            t_date = t.exit_time if isinstance(t.exit_time, dt_date) else None
+            if hasattr(t.exit_time, 'date'):
+                t_date = t.exit_time.date()
+        elif t.entry_time:
+            t_date = t.entry_time if isinstance(t.entry_time, dt_date) else None
+            if hasattr(t.entry_time, 'date'):
+                t_date = t.entry_time.date()
+
+        if t_date is None:
+            filtered.append(t)
+            continue
+
+        if start_date:
+            sd = dt_date.fromisoformat(start_date)
+            if t_date < sd:
+                continue
+        if end_date:
+            ed = dt_date.fromisoformat(end_date)
+            if t_date > ed:
+                continue
+        filtered.append(t)
+
+    # Calculate summary stats
+    total_pnl = sum(t.pnl or 0 for t in filtered)
+    winners = [t for t in filtered if (t.pnl or 0) > 0]
+    losers = [t for t in filtered if (t.pnl or 0) < 0]
+    win_rate = (len(winners) / len(filtered) * 100) if filtered else 0
+    avg_win = (sum(t.pnl for t in winners) / len(winners)) if winners else 0
+    avg_loss = (sum(t.pnl for t in losers) / len(losers)) if losers else 0
+    profit_factor = abs(avg_win / avg_loss) if avg_loss != 0 else float('inf')
+
+    return {
+        "total_trades": len(filtered),
+        "winners": len(winners),
+        "losers": len(losers),
+        "win_rate": round(win_rate, 1),
+        "total_pnl": round(total_pnl, 2),
+        "avg_win": round(avg_win, 2),
+        "avg_loss": round(avg_loss, 2),
+        "profit_factor": round(profit_factor, 2) if profit_factor != float('inf') else "∞",
+        "trades": [t.model_dump() for t in filtered],
+        "filters": {"start_date": start_date, "end_date": end_date},
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

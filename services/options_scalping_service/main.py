@@ -17,7 +17,7 @@ Paper Trading:
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import pytz
 import json
@@ -27,7 +27,15 @@ import re
 import requests
 import numpy as np
 import threading
+import asyncio
 import time as _time
+
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+from shared.trailing_sl import TrailingStopLossEngine, TrailConfig, TrailState, TrailStrategy
+from shared.iceberg_order import IcebergEngine, IcebergOrder
+from shared.broker_interface import BrokerRouter, PaperBroker, OrderSide, OrderType as BrokerOrderType, ProductType, ExchangeType
+from shared.trade_stream import trade_stream, TradeMessage, TOPIC_TRADE_REQUEST, TOPIC_TRADE_STATUS
 
 app = FastAPI(title="SignalForge Options Scalping Service")
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +47,8 @@ IST = pytz.timezone("Asia/Kolkata")
 # Constants
 # ──────────────────────────────────────────────────────────────────
 NIFTY_LOT_SIZE = 65          # 2026 lot size
+DEFAULT_LOTS = 5             # Default 5 lots per trade
+ICEBERG_THRESHOLD_LOTS = 5   # Iceberg ordering above 5 lots
 SL_PCT = 0.0008              # 0.08% of spot — tight for scalping (3-4 pts)
 TARGET_PCT = 0.0015           # 0.15% of spot — quick target (6-7 pts)
 SLIPPAGE_MIN = 0.0001        # 0.01%
@@ -47,6 +57,8 @@ LATENCY_MIN_MS = 50
 LATENCY_MAX_MS = 200
 INITIAL_CAPITAL = 100000.0   # ₹1,00,000 paper trading capital
 MAX_TRADES_PER_DAY = 30      # More trades — scalping is about many small wins
+SQUARE_OFF_HOUR = 15         # Options intraday: square off at 3:15 PM
+SQUARE_OFF_MIN = 15
 DATA_DIR = os.environ.get("DATA_DIR", "/app/data")
 TRADES_FILE = os.path.join(DATA_DIR, "options_paper_trades.json")
 LEARNING_FILE = os.path.join(DATA_DIR, "options_learning.json")
@@ -73,12 +85,16 @@ class TradeRequest(BaseModel):
     direction: str         # "CE" or "PE"
     strike: int
     entry_premium: float
-    lots: int = 1
+    lots: int = DEFAULT_LOTS   # Default 5 lots; user can choose
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
+    broker: Optional[str] = "paper"  # "paper", "dhan", "angelone"
 
 
 class TradeCloseRequest(BaseModel):
     trade_id: str
     exit_premium: float
+    user_id: Optional[str] = None
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -98,6 +114,19 @@ class PaperTradingEngine:
         self.auto_trade_log = []       # recent auto-trade actions (last 50)
         self.last_scan_time = None
         self.last_signal = None
+        # Trailing SL state per trade
+        self._trail_states: dict = {}  # trade_id -> TrailState dict
+        self._trail_config = TrailConfig(
+            strategy=TrailStrategy.HYBRID,
+            trail_pct=0.3,
+            activation_pct=0.2,
+            step_size_pct=0.3,
+            step_lock_pct=0.2,
+            breakeven_trigger_pct=0.3,
+            min_trail_pct=0.1,
+        )
+        # Iceberg orders
+        self.iceberg_orders: list = []  # completed iceberg order dicts
         self._load()
 
     def _load(self):
@@ -113,6 +142,12 @@ class PaperTradingEngine:
                 self.daily_pnl = data.get("daily_pnl", 0.0)
                 self.day_trade_count = data.get("day_trade_count", 0)
                 self.current_date = data.get("current_date")
+                # Restore trailing SL states
+                trail_data = data.get("trail_states", {})
+                self._trail_states = {}
+                for tid, ts in trail_data.items():
+                    self._trail_states[tid] = ts
+                self.iceberg_orders = data.get("iceberg_orders", [])
                 logger.info(f"Loaded paper trades: capital=₹{self.capital:,.2f}, trades={len(self.trade_history)}")
         except Exception as e:
             logger.error(f"Failed to load paper trades: {e}")
@@ -128,7 +163,9 @@ class PaperTradingEngine:
                 "total_pnl": self.total_pnl,
                 "daily_pnl": self.daily_pnl,
                 "day_trade_count": self.day_trade_count,
-                "current_date": self.current_date
+                "current_date": self.current_date,
+                "trail_states": self._trail_states,
+                "iceberg_orders": self.iceberg_orders[-50:],
             }
             with open(TRADES_FILE, "w") as f:
                 json.dump(data, f, indent=2, default=str)
@@ -144,8 +181,11 @@ class PaperTradingEngine:
             self.day_trade_count = 0
             self._save()
 
-    def place_trade(self, direction: str, strike: int, entry_premium: float, lots: int = 1, indicators: dict = None) -> dict:
-        """Place a paper trade with simulated slippage/latency"""
+    def place_trade(self, direction: str, strike: int, entry_premium: float, lots: int = DEFAULT_LOTS, indicators: dict = None, user_id: str = None) -> dict:
+        """Place a paper trade with simulated slippage/latency.
+        Default is 5 lots. Above 5 lots triggers Iceberg ordering.
+        All option trades are intraday - squared off before 3:15 PM.
+        """
         self._reset_daily()
 
         if self.day_trade_count >= MAX_TRADES_PER_DAY:
@@ -153,6 +193,11 @@ class PaperTradingEngine:
 
         if len(self.active_trades) > 0:
             return {"status": "rejected", "reason": "Close existing position before opening new"}
+
+        # Check if market hours for intraday
+        now = datetime.now(IST)
+        if now.hour >= SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN:
+            return {"status": "rejected", "reason": "Past intraday cutoff (3:15 PM). No new option trades."}
 
         # Simulate slippage
         slippage_pct = np.random.uniform(SLIPPAGE_MIN, SLIPPAGE_MAX)
@@ -166,7 +211,6 @@ class PaperTradingEngine:
         if total_cost > self.capital * 0.5:  # Max 50% capital per trade
             return {"status": "rejected", "reason": f"Trade cost ₹{total_cost:,.2f} exceeds 50% of capital ₹{self.capital:,.2f}"}
 
-        now = datetime.now(IST)
         trade = {
             "trade_id": f"OPT-{now.strftime('%Y%m%d%H%M%S')}-{np.random.randint(1000,9999)}",
             "direction": direction,
@@ -182,18 +226,45 @@ class PaperTradingEngine:
             "status": "OPEN",
             "entry_time": now.isoformat(),
             "quantity": NIFTY_LOT_SIZE * lots,
-            "indicators": indicators or {}
+            "indicators": indicators or {},
+            "user_id": user_id,
+            "is_intraday": True,
+            "iceberg_used": lots > ICEBERG_THRESHOLD_LOTS,
         }
+
+        # Initialize trailing SL state for this trade
+        trail_state = TrailingStopLossEngine.create_state(
+            trade_id=trade["trade_id"],
+            trade_type="BUY",  # Options are always buy premium
+            entry_price=slipped_premium,
+            stop_loss=trade["sl_premium"],
+        )
+        self._trail_states[trade["trade_id"]] = TrailingStopLossEngine.state_to_dict(trail_state)
+
+        # Handle Iceberg if lots > threshold
+        if lots > ICEBERG_THRESHOLD_LOTS:
+            iceberg = IcebergEngine.create_option_iceberg(
+                symbol=f"NIFTY-{strike}-{direction}",
+                trade_type="BUY",
+                lots=lots,
+                premium=slipped_premium,
+                lot_size=NIFTY_LOT_SIZE,
+                user_id=user_id,
+            )
+            trade["iceberg_id"] = iceberg.iceberg_id
+            trade["iceberg_slices"] = len(iceberg.slices)
+            self.iceberg_orders.append(IcebergEngine.order_to_dict(iceberg))
+            logger.info(f"Iceberg order created: {iceberg.iceberg_id} with {len(iceberg.slices)} slices for {lots} lots")
 
         self.active_trades.append(trade)
         self.day_trade_count += 1
         self._save()
 
-        logger.info(f"SCALP OPEN: {direction} {strike} @ ₹{slipped_premium} (slippage: {slippage_pct*100:.3f}%, latency: {latency_ms}ms)")
+        logger.info(f"SCALP OPEN: {direction} {strike} @ ₹{slipped_premium} x{lots}lots (slippage: {slippage_pct*100:.3f}%, latency: {latency_ms}ms)")
         return {"status": "placed", "trade": trade}
 
     def close_trade(self, trade_id: str, exit_premium: float) -> dict:
-        """Close a paper trade with simulated slippage"""
+        """Close a paper trade with simulated slippage. Cleans up trailing SL state."""
         trade = None
         for t in self.active_trades:
             if t["trade_id"] == trade_id:
@@ -231,6 +302,8 @@ class PaperTradingEngine:
         self.capital += total_pnl
         self.daily_pnl += total_pnl
         self.total_pnl += total_pnl
+        # Clean up trailing SL state
+        self._trail_states.pop(trade_id, None)
         self._save()
 
         # Feed outcome to learning engine
@@ -289,6 +362,8 @@ class PaperTradingEngine:
                 "avg_hold_sec": round(sum(t.get("hold_duration_sec", 0) for t in self.trade_history) / total, 1) if total > 0 else 0,
             },
             "lot_size": NIFTY_LOT_SIZE,
+            "default_lots": DEFAULT_LOTS,
+            "iceberg_threshold": ICEBERG_THRESHOLD_LOTS,
             "current_date": self.current_date
         }
 
@@ -301,6 +376,8 @@ class PaperTradingEngine:
         self.total_pnl = 0.0
         self.day_trade_count = 0
         self.current_date = None
+        self._trail_states = {}
+        self.iceberg_orders = []
         self._save()
         self.auto_trade_log = []
         return {"status": "reset", "capital": self.capital}
@@ -316,14 +393,47 @@ class PaperTradingEngine:
         self.auto_trade_log = self.auto_trade_log[-100:]
 
     def check_sl_target(self, spot: float):
-        """Auto-close active trades that hit SL or Target based on spot movement."""
+        """Auto-close active trades that hit SL or Target.
+        Implements trailing stop loss - adjusts SL upward as premium increases.
+        Enforces intraday square-off at 3:15 PM IST.
+        """
         if not self.active_trades:
             return
+
+        now = datetime.now(IST)
+
+        # Intraday enforcement: square off all at 3:15 PM
+        if now.hour >= SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN:
+            for trade in list(self.active_trades):
+                current = estimate_option_premium(spot, trade["strike"], trade["direction"])
+                result = self.close_trade(trade["trade_id"], current)
+                self._add_log("INTRADAY-SQUAREOFF", f"{trade['direction']} {trade['strike']} exit@₹{current:.2f} PnL=₹{result.get('trade',{}).get('pnl',0):.2f}")
+            return
+
         for trade in list(self.active_trades):
             sl = trade.get("sl_premium", 0)
             target = trade.get("target_premium", 999999)
             # Estimate current premium from spot
             current = estimate_option_premium(spot, trade["strike"], trade["direction"])
+
+            # === TRAILING STOP LOSS ===
+            trade_id = trade["trade_id"]
+            trail_dict = self._trail_states.get(trade_id)
+            if trail_dict:
+                trail_state = TrailingStopLossEngine.state_from_dict(trail_dict)
+                new_sl = TrailingStopLossEngine.compute_new_sl(
+                    state=trail_state,
+                    current_price=current,
+                    config=self._trail_config,
+                )
+                if new_sl is not None:
+                    old_sl = trade["sl_premium"]
+                    trade["sl_premium"] = new_sl
+                    sl = new_sl
+                    self._trail_states[trade_id] = TrailingStopLossEngine.state_to_dict(trail_state)
+                    self._add_log("TRAIL-SL", f"{trade['direction']} {trade['strike']} SL: ₹{old_sl:.2f}→₹{new_sl:.2f} (premium: ₹{current:.2f})")
+                    self._save()
+
             if current <= sl:
                 result = self.close_trade(trade["trade_id"], current)
                 self._add_log("AUTO-CLOSE SL", f"{trade['direction']} {trade['strike']} exit@₹{current:.2f} PnL=₹{result.get('trade',{}).get('pnl',0):.2f}")
@@ -763,8 +873,14 @@ async def get_scalp_signal():
 
 @app.post("/trade/place")
 async def place_trade(req: TradeRequest):
-    """Place a paper scalping trade (used by auto-trader internally)"""
-    result = paper_engine.place_trade(req.direction, req.strike, req.entry_premium, req.lots)
+    """Place a paper scalping trade.
+    Default: 5 lots. User can choose more.
+    Above 5 lots → Iceberg order splitting.
+    """
+    result = paper_engine.place_trade(
+        req.direction, req.strike, req.entry_premium, req.lots,
+        user_id=req.user_id,
+    )
     return result
 
 
@@ -855,6 +971,33 @@ async def reset_learning():
     return {"status": "reset", "version": 1}
 
 
+@app.get("/trailing-sl/status")
+async def trailing_sl_status():
+    """Get trailing SL status for all active trades."""
+    states = {}
+    for trade in paper_engine.active_trades:
+        tid = trade["trade_id"]
+        trail_dict = paper_engine._trail_states.get(tid)
+        if trail_dict:
+            states[tid] = {
+                "symbol": f"{trade['direction']} {trade['strike']}",
+                "entry": trail_dict.get("entry_price"),
+                "original_sl": trail_dict.get("original_sl"),
+                "current_sl": trail_dict.get("current_sl"),
+                "peak_price": trail_dict.get("peak_price"),
+                "trail_activated": trail_dict.get("trail_activated", False),
+                "adjustments": trail_dict.get("adjustments", 0),
+                "history": trail_dict.get("history", [])[-5:],
+            }
+    return {"trailing_sl_states": states}
+
+
+@app.get("/iceberg/history")
+async def iceberg_history():
+    """Get recent iceberg order history."""
+    return {"iceberg_orders": paper_engine.iceberg_orders[-20:]}
+
+
 def _get_next_thursday() -> str:
     """Get next weekly expiry (Thursday)"""
     now = datetime.now(IST)
@@ -923,6 +1066,7 @@ def _auto_trade_loop():
                     }
                     result = paper_engine.place_trade(
                         signal.direction, signal.strike, signal.entry_premium,
+                        lots=DEFAULT_LOTS,
                         indicators=trade_indicators,
                     )
                     if result["status"] == "placed":

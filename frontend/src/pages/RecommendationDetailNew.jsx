@@ -39,8 +39,8 @@ const RecommendationDetail = () => {
             <Container maxWidth="lg" sx={{ py: 4 }}>
                 <Skeleton variant="text" width={200} height={40} sx={{ mb: 2 }} />
                 <Grid container spacing={3}>
-                    <Grid item xs={12} md={8}><Skeleton variant="rectangular" height={400} sx={{ borderRadius: 4 }} /></Grid>
-                    <Grid item xs={12} md={4}><Skeleton variant="rectangular" height={400} sx={{ borderRadius: 4 }} /></Grid>
+                    <Grid size={{ xs: 12, md: 8 }}><Skeleton variant="rectangular" height={400} sx={{ borderRadius: 4 }} /></Grid>
+                    <Grid size={{ xs: 12, md: 4 }}><Skeleton variant="rectangular" height={400} sx={{ borderRadius: 4 }} /></Grid>
                 </Grid>
             </Container>
         );
@@ -72,7 +72,7 @@ const RecommendationDetail = () => {
 
             <Grid container spacing={3}>
                 {/* Left Column - Analysis */}
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     {/* Header Card */}
                     <Card sx={{ mb: 3, position: 'relative', overflow: 'visible',
                         '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4, borderRadius: '16px 16px 0 0', background: `linear-gradient(90deg, ${dirColor}, ${alpha(dirColor, 0.3)})` }
@@ -104,7 +104,7 @@ const RecommendationDetail = () => {
 
                             {/* Trade Levels */}
                             <Grid container spacing={2}>
-                                <Grid item xs={4}>
+                                <Grid size={4}>
                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha('#10b981', 0.06), border: `1px solid ${alpha('#10b981', 0.1)}`, textAlign: 'center' }}>
                                         <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem' }}>
                                             <Target size={10} style={{ marginRight: 4 }} />TARGET 1
@@ -112,7 +112,7 @@ const RecommendationDetail = () => {
                                         <Typography variant="h6" fontWeight={800} sx={{ color: '#10b981' }}>{formatINR(rec.target1 || rec.target)}</Typography>
                                     </Box>
                                 </Grid>
-                                <Grid item xs={4}>
+                                <Grid size={4}>
                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha('#6366f1', 0.06), border: `1px solid ${alpha('#6366f1', 0.1)}`, textAlign: 'center' }}>
                                         <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem' }}>
                                             <Target size={10} style={{ marginRight: 4 }} />TARGET 2
@@ -120,7 +120,7 @@ const RecommendationDetail = () => {
                                         <Typography variant="h6" fontWeight={800} sx={{ color: '#6366f1' }}>{rec.target2 ? formatINR(rec.target2) : '---'}</Typography>
                                     </Box>
                                 </Grid>
-                                <Grid item xs={4}>
+                                <Grid size={4}>
                                     <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha('#ef4444', 0.06), border: `1px solid ${alpha('#ef4444', 0.1)}`, textAlign: 'center' }}>
                                         <Typography variant="overline" color="text.secondary" sx={{ fontSize: '0.55rem' }}>
                                             <ShieldCheck size={10} style={{ marginRight: 4 }} />STOP LOSS
@@ -156,7 +156,7 @@ const RecommendationDetail = () => {
                                         const val = Math.max(0, Math.min(100, Math.abs(rawVal)));
                                         const color = SCORE_COLORS[label] || '#94a3b8';
                                         return (
-                                            <Grid item xs={12} sm={6} key={label}>
+                                            <Grid size={{ xs: 12, sm: 6 }} key={label}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                     <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
                                                     <Box sx={{ flex: 1 }}>
@@ -180,7 +180,7 @@ const RecommendationDetail = () => {
                 </Grid>
 
                 {/* Right Column - Actions & Info */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     {/* Conviction Card */}
                     <Card sx={{ mb: 3 }}>
                         <CardContent sx={{ p: 3, textAlign: 'center' }}>
