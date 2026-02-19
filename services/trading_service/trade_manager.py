@@ -83,6 +83,11 @@ class TradeManager:
                     # Restore trailing SL states
                     self._trail_states = data.get("_trail_states", {})
                     self.iceberg_orders = data.get("iceberg_orders", [])
+                    # GAP-9: restore cooldown state across restarts
+                    cs = data.get("_cooldown_state", {})
+                    self._symbol_last_exit = cs.get("symbol_last_exit", {})
+                    self._symbol_entries_today = cs.get("symbol_entries_today", {})
+                    self._today_date = cs.get("today_date", "")
             except Exception as e:
                 print(f"[TradeManager] Error loading state: {e}")
                 self.portfolio = Portfolio()
@@ -96,6 +101,12 @@ class TradeManager:
             data = json.loads(self.portfolio.model_dump_json())
             data["_trail_states"] = self._trail_states
             data["iceberg_orders"] = self.iceberg_orders[-100:]  # Keep last 100
+            # GAP-9: persist cooldown state across restarts
+            data["_cooldown_state"] = {
+                "symbol_last_exit": self._symbol_last_exit,
+                "symbol_entries_today": self._symbol_entries_today,
+                "today_date": self._today_date,
+            }
             with open(DATA_FILE, "w") as f:
                 json.dump(data, f, indent=2, default=str)
         except Exception as e:
@@ -151,7 +162,7 @@ class TradeManager:
             return None
 
         # === SAFETY GATE 3: Minimum conviction filter ===
-        MIN_CONVICTION = 30  # Don't trade on weak signals
+        MIN_CONVICTION = 45  # GAP-5: Raised from 30 → 45 to filter out weak/ambiguous signals
         if conviction < MIN_CONVICTION:
             print(f"[TradeManager] ⛔ BLOCKED: Conviction {conviction:.1f} < {MIN_CONVICTION} minimum for {symbol}.")
             return None

@@ -49,11 +49,50 @@ class TradingCalendar:
     @staticmethod
     def next_trading_day(date: datetime) -> datetime:
         """Get the next trading day"""
+        from datetime import timedelta
         next_day = date
         while True:
-            next_day = next_day.replace(day=next_day.day + 1)
+            next_day = next_day + timedelta(days=1)
             if TradingCalendar.is_trading_day(next_day):
                 return next_day
+
+    @staticmethod
+    def trading_days_between(start: datetime, end: datetime) -> int:
+        """Count trading days between two dates (exclusive of start, inclusive of end).
+        Used for GAP-8: accurate theta decay calculation.
+        """
+        from datetime import timedelta
+        if end <= start:
+            return 0
+        count = 0
+        current = start + timedelta(days=1)
+        while current <= end:
+            if TradingCalendar.is_trading_day(current):
+                count += 1
+            current = current + timedelta(days=1)
+        return count
+
+    @staticmethod
+    def trading_days_to_expiry(expiry_date: datetime) -> float:
+        """Return trading days (+ fractional intraday) to expiry.
+        Used by PremiumSimulator for accurate theta calculation.
+        """
+        import pytz
+        ist = pytz.timezone("Asia/Kolkata")
+        now = datetime.now(ist)
+
+        # Full trading days remaining (excluding today)
+        full_days = TradingCalendar.trading_days_between(now, expiry_date)
+
+        # Add fractional portion of today if market is open
+        if TradingCalendar.is_trading_day(now):
+            market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+            if now < market_close:
+                remaining_today = (market_close - now).total_seconds()
+                trading_day_seconds = (15 * 60 + 30 - 9 * 60 - 15) * 60  # 6h15m
+                full_days += remaining_today / trading_day_seconds
+
+        return max(0.01, full_days)
 
 # Singleton
 trading_calendar = TradingCalendar()

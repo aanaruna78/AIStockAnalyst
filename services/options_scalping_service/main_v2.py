@@ -169,7 +169,12 @@ class PaperTradingEngine:
                 self.day_trade_count = data.get("day_trade_count", 0)
                 self.current_date = data.get("current_date")
                 self.iceberg_orders = data.get("iceberg_orders", [])
-                logger.info(f"Loaded paper trades: capital=₹{self.capital:,.2f}, trades={len(self.trade_history)}")
+                # GAP-9: restore cooldown state
+                cs = data.get("cooldown_state", {})
+                self._last_loss_time = cs.get("last_loss_time", 0)
+                self._consecutive_losses = cs.get("consecutive_losses", 0)
+                self._daily_strike_entries = cs.get("daily_strike_entries", {})
+                logger.info(f"Loaded paper trades: capital=₹{self.capital:,.2f}, trades={len(self.trade_history)}, cooldown_losses={self._consecutive_losses}")
         except Exception as e:
             logger.error(f"Failed to load paper trades: {e}")
 
@@ -185,6 +190,12 @@ class PaperTradingEngine:
                 "day_trade_count": self.day_trade_count,
                 "current_date": self.current_date,
                 "iceberg_orders": self.iceberg_orders[-50:],
+                # GAP-9: persist cooldown state across restarts
+                "cooldown_state": {
+                    "last_loss_time": self._last_loss_time,
+                    "consecutive_losses": self._consecutive_losses,
+                    "daily_strike_entries": self._daily_strike_entries,
+                },
             }
             with open(TRADES_FILE, "w") as f:
                 json.dump(data, f, indent=2, default=str)
@@ -348,7 +359,7 @@ class PaperTradingEngine:
         dte = _days_to_expiry()
         self._premium_sims[trade_id] = PremiumSimulator(
             spot=spot, strike=strike, option_type=direction,
-            days_to_expiry=dte, iv=15.0, lot_size=NIFTY_LOT_SIZE,
+            days_to_expiry=dte, iv=_get_real_iv(direction), lot_size=NIFTY_LOT_SIZE,
         )
 
         self.active_trades.append(trade)
@@ -529,6 +540,28 @@ paper_engine = PaperTradingEngine()
 # Nifty Spot / Options Helpers
 # ──────────────────────────────────────────────────────────────────
 def get_nifty_spot() -> Optional[float]:
+    """GAP-4: Multi-source Nifty spot with fallback chain.
+    1. Market Data Service (internal, reliable)
+    2. Google Finance (scraping)
+    3. yfinance direct (circuit-breaker safe)
+    Also returns volume when available via _last_spot_data.
+    """
+    global _last_spot_data
+
+    # Source 1: Internal market-data-service
+    try:
+        mds_url = os.environ.get("MARKET_DATA_SERVICE_URL", "http://market-data-service:8000")
+        resp = requests.get(f"{mds_url}/quote/NIFTY_50", timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            ltp = data.get("ltp")
+            if ltp and ltp > 0:
+                _last_spot_data = data  # Cache volume + other fields
+                return float(ltp)
+    except Exception as e:
+        logger.debug(f"Market data service unavailable: {e}")
+
+    # Source 2: Google Finance
     try:
         url = "https://www.google.com/finance/quote/NIFTY_50:INDEXNSE"
         headers = {"User-Agent": GOOGLE_FINANCE_UA}
@@ -538,17 +571,183 @@ def get_nifty_spot() -> Optional[float]:
             if match:
                 return float(match.group(1))
     except Exception as e:
-        logger.warning(f"Failed to get Nifty spot: {e}")
+        logger.debug(f"Google Finance failed: {e}")
+
+    # Source 3: yfinance direct
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker("^NSEI")
+        data = ticker.fast_info
+        ltp = getattr(data, "last_price", None) or getattr(data, "previous_close", None)
+        if ltp and ltp > 0:
+            return float(ltp)
+    except Exception as e:
+        logger.debug(f"yfinance direct failed: {e}")
+
+    logger.warning("All spot data sources failed")
     return None
 
 
+# Cache for last spot data (includes volume from market-data-service)
+_last_spot_data: dict = {}
+
+# GAP-1: NSE option chain OI cache (refreshed every 3 minutes)
+_oi_cache: dict = {"data": None, "timestamp": 0}
+_OI_CACHE_TTL = 180  # 3 minutes
+
+# GAP-3: Real IV cache (populated from NSE option chain)
+_iv_cache: dict = {"ce_iv": 15.0, "pe_iv": 15.0}
+
+
+def _get_real_iv(direction: str) -> float:
+    """GAP-3: Return real IV from NSE option chain if available, else default 15%."""
+    key = "ce_iv" if direction.upper() == "CE" else "pe_iv"
+    return _iv_cache.get(key, 15.0)
+
+
+def _fetch_nse_option_oi(spot: float) -> dict:
+    """GAP-1: Fetch real Open Interest data from NSE option chain API.
+    Falls back to volume-derived estimates if NSE is unavailable.
+    Returns: {oi_change_call_pct, oi_change_put_pct, spread_pct}
+    """
+    now_ts = _time.time()
+
+    # Check cache
+    if _oi_cache["data"] and (now_ts - _oi_cache["timestamp"]) < _OI_CACHE_TTL:
+        return _oi_cache["data"]
+
+    # Try NSE option chain API
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        # First get cookies from NSE main page
+        session = requests.Session()
+        session.get("https://www.nseindia.com", headers=headers, timeout=5)
+        resp = session.get(
+            "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY",
+            headers=headers,
+            timeout=8,
+        )
+        if resp.status_code == 200:
+            chain_data = resp.json()
+            records = chain_data.get("records", {}).get("data", [])
+            atm = round(spot / 50) * 50
+
+            # Find ATM and nearby strikes for OI analysis
+            total_ce_oi_chg = 0
+            total_pe_oi_chg = 0
+            total_ce_oi = 0
+            total_pe_oi = 0
+            bid_ask_spreads = []
+
+            for rec in records:
+                strike = rec.get("strikePrice", 0)
+                if abs(strike - atm) > 200:  # Only look at strikes within 200 pts
+                    continue
+                ce = rec.get("CE", {})
+                pe = rec.get("PE", {})
+                if ce:
+                    total_ce_oi += ce.get("openInterest", 0)
+                    total_ce_oi_chg += ce.get("changeinOpenInterest", 0)
+                    if ce.get("bidprice", 0) > 0 and ce.get("askprice", 0) > 0:
+                        s = (ce["askprice"] - ce["bidprice"]) / ce["askprice"] * 100
+                        bid_ask_spreads.append(s)
+                    # GAP-3: Extract real IV from ATM strike
+                    if strike == atm and ce.get("impliedVolatility", 0) > 0:
+                        _iv_cache["ce_iv"] = ce["impliedVolatility"]
+                if pe:
+                    total_pe_oi += pe.get("openInterest", 0)
+                    total_pe_oi_chg += pe.get("changeinOpenInterest", 0)
+                    if pe.get("bidprice", 0) > 0 and pe.get("askprice", 0) > 0:
+                        s = (pe["askprice"] - pe["bidprice"]) / pe["askprice"] * 100
+                        bid_ask_spreads.append(s)
+                    # GAP-3: Extract real IV from ATM strike
+                    if strike == atm and pe.get("impliedVolatility", 0) > 0:
+                        _iv_cache["pe_iv"] = pe["impliedVolatility"]
+
+            # Convert to percentage change
+            oi_call_pct = (total_ce_oi_chg / total_ce_oi * 100) if total_ce_oi > 0 else 0
+            oi_put_pct = (total_pe_oi_chg / total_pe_oi * 100) if total_pe_oi > 0 else 0
+            avg_spread = sum(bid_ask_spreads) / len(bid_ask_spreads) if bid_ask_spreads else 0.5
+
+            result = {
+                "oi_change_call_pct": round(oi_call_pct, 2),
+                "oi_change_put_pct": round(oi_put_pct, 2),
+                "spread_pct": round(avg_spread, 2),
+                "source": "nse",
+            }
+            _oi_cache["data"] = result
+            _oi_cache["timestamp"] = now_ts
+            return result
+
+    except Exception as e:
+        logger.debug(f"NSE option chain fetch failed: {e}")
+
+    # Fallback: volume-based OI estimation
+    # Higher volume tends to correlate with OI buildup
+    all_candles = market_store.get_candles()
+    if all_candles and len(all_candles) >= 2:
+        recent_vol = all_candles[-1].volume
+        avg_vol = sum(c.volume for c in all_candles) / len(all_candles)
+        vol_ratio = recent_vol / avg_vol if avg_vol > 0 else 1.0
+
+        # Estimate OI change from volume (muted range vs random)
+        oi_call_est = (vol_ratio - 1.0) * 3.0  # Positive vol spike → positive OI
+        oi_put_est = (vol_ratio - 1.0) * 2.5
+        result = {
+            "oi_change_call_pct": round(max(-3, min(5, oi_call_est)), 2),
+            "oi_change_put_pct": round(max(-3, min(5, oi_put_est)), 2),
+            "spread_pct": round(0.3 + max(0, (1 - vol_ratio) * 0.4), 2),  # Wider spread on low vol
+            "source": "volume_estimate",
+        }
+    else:
+        # Conservative defaults (not random)
+        result = {
+            "oi_change_call_pct": 0.0,
+            "oi_change_put_pct": 0.0,
+            "spread_pct": 0.5,
+            "source": "default",
+        }
+
+    _oi_cache["data"] = result
+    _oi_cache["timestamp"] = now_ts
+    return result
+
+
 def _days_to_expiry() -> float:
+    """GAP-8: Count trading days to next weekly expiry (Thursday).
+    Excludes weekends and NSE holidays for accurate theta calculation.
+    """
     now = datetime.now(IST)
     days_ahead = 3 - now.weekday()
     if days_ahead <= 0:
         days_ahead += 7
     expiry = now + timedelta(days=days_ahead)
-    return max(0.1, (expiry - now).total_seconds() / 86400)
+
+    # Count only trading days (excluding weekends & holidays)
+    try:
+        from services.market_data_service.trading_calendar import TradingCalendar
+        return TradingCalendar.trading_days_to_expiry(expiry)
+    except ImportError:
+        pass
+
+    # Inline fallback: count business days (weekdays only)
+    count = 0
+    current = now
+    while current.date() < expiry.date():
+        current = current + timedelta(days=1)
+        if current.weekday() < 5:  # Mon-Fri
+            count += 1
+    # Add fractional portion of today
+    if now.weekday() < 5:
+        market_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
+        if now < market_close:
+            remaining_secs = (market_close - now).total_seconds()
+            count += remaining_secs / (6.25 * 3600)  # 6h15m trading day
+    return max(0.01, count)
 
 
 def _get_next_thursday() -> str:
@@ -630,7 +829,7 @@ def _signal_loop():
                     atm = round(spot / 50) * 50
                     for side in ("CE", "PE"):
                         sim = PremiumSimulator(spot=spot, strike=atm, option_type=side,
-                                              days_to_expiry=_days_to_expiry(), iv=15.0)
+                                              days_to_expiry=_days_to_expiry(), iv=_get_real_iv(side))
                         pc = PremiumCandle(
                             timestamp=_candle_start,
                             open=sim.premium * 0.99, high=sim.premium * 1.01,
@@ -644,16 +843,23 @@ def _signal_loop():
                         else:
                             option_store.add_pe_candle(pc)
 
-                # Start new candle
+                # Start new candle — GAP-2: use real volume from market-data-service
                 _candle_start = current_minute
                 _candle_open = spot
                 _candle_high = spot
                 _candle_low = spot
-                _candle_vol = _random.randint(50000, 200000)
+                _candle_vol = int(_last_spot_data.get("volume", 0)) if _last_spot_data else 0
+                if _candle_vol <= 0:
+                    _candle_vol = _random.randint(50000, 200000)  # Fallback if no real data
             else:
                 _candle_high = max(_candle_high, spot)
                 _candle_low = min(_candle_low, spot)
-                _candle_vol += _random.randint(5000, 20000)
+                # Accumulate volume from real data if available
+                tick_vol = int(_last_spot_data.get("volume", 0)) if _last_spot_data else 0
+                if tick_vol > 0:
+                    _candle_vol = tick_vol  # Cumulative from source
+                else:
+                    _candle_vol += _random.randint(5000, 20000)  # Fallback
 
             ind = market_store.indicators
 
@@ -687,10 +893,11 @@ def _signal_loop():
             all_candles = market_store.get_candles()
             avg_vol = sum(c.volume for c in all_candles) / max(1, len(all_candles)) if all_candles else 100000
 
-            # OI simulated
-            oi_call = _random.uniform(-3, 5)
-            oi_put = _random.uniform(-3, 5)
-            spread_pct = 0.3 + _random.uniform(0, 0.5)
+            # OI data — GAP-1: fetch real OI from NSE option chain
+            oi_data = _fetch_nse_option_oi(spot)
+            oi_call = oi_data["oi_change_call_pct"]
+            oi_put = oi_data["oi_change_put_pct"]
+            spread_pct = oi_data["spread_pct"]
 
             signal = momentum_engine.evaluate(
                 ind=ind,
@@ -741,8 +948,19 @@ def _signal_loop():
                 atm_strike = round(spot / 50) * 50
                 dte = _days_to_expiry()
                 sim = PremiumSimulator(spot=spot, strike=atm_strike, option_type=direction,
-                                      days_to_expiry=dte, iv=15.0)
+                                      days_to_expiry=dte, iv=_get_real_iv(direction))
                 entry_premium = sim.premium
+
+                # GAP-6: ATR-based dynamic position sizing
+                # Risk budget = 2% of capital per trade
+                # Lots = risk_budget / (premium_atr * lot_size)
+                premium_atr = option_store.premium_atr(side=direction, period=14)
+                if premium_atr > 0 and entry_premium > 0:
+                    risk_budget = paper_engine.capital * 0.02
+                    atr_lots = int(risk_budget / (premium_atr * NIFTY_LOT_SIZE))
+                    dynamic_lots = max(1, min(atr_lots, DEFAULT_LOTS * 2))  # Cap at 2x default
+                else:
+                    dynamic_lots = DEFAULT_LOTS
 
                 # ── Greeks validation data for place_trade ──
                 greeks_data = {
@@ -757,7 +975,7 @@ def _signal_loop():
                     direction=direction,
                     strike=atm_strike,
                     entry_premium=entry_premium,
-                    lots=DEFAULT_LOTS,
+                    lots=dynamic_lots,  # GAP-6: ATR-based sizing
                     indicators={
                         "confidence": signal.confidence,
                         "breakout_score": signal.breakout_score,
@@ -767,6 +985,8 @@ def _signal_loop():
                         "regime": regime_result.regime.value,
                         "reasons": signal.reasons[:5],
                         "greeks": greeks_data,
+                        "dynamic_lots": dynamic_lots,
+                        "premium_atr": round(premium_atr, 2) if premium_atr else 0,
                     },
                     profile_id=profile.profile_id,
                     regime=regime_result.regime.value,
@@ -1112,8 +1332,8 @@ async def get_options_chain():
     dte = _days_to_expiry()
     for i in range(-5, 6):
         strike = atm + i * 50
-        ce_sim = PremiumSimulator(spot=spot, strike=strike, option_type="CE", days_to_expiry=dte)
-        pe_sim = PremiumSimulator(spot=spot, strike=strike, option_type="PE", days_to_expiry=dte)
+        ce_sim = PremiumSimulator(spot=spot, strike=strike, option_type="CE", days_to_expiry=dte, iv=_get_real_iv("CE"))
+        pe_sim = PremiumSimulator(spot=spot, strike=strike, option_type="PE", days_to_expiry=dte, iv=_get_real_iv("PE"))
         chain.append({
             "strike": strike,
             "ce_premium": ce_sim.premium,
@@ -1143,6 +1363,69 @@ async def premium_sim_status():
         if sim:
             result[trade["trade_id"]] = sim.to_dict()
     return result
+
+
+@app.get("/diagnostics")
+async def diagnostics():
+    """Comprehensive diagnostics endpoint for monitoring and debugging.
+    Shows cooldown state, per-strike limits, data source health, filter stats.
+    """
+    now = datetime.now(IST)
+
+    # Cooldown state
+    cooldown_active = False
+    cooldown_remaining = 0
+    if paper_engine._last_loss_time > 0:
+        elapsed = _time.time() - paper_engine._last_loss_time
+        cooldown = CONSEC_LOSS_COOLDOWN_SEC if paper_engine._consecutive_losses >= 2 else LOSS_COOLDOWN_SEC
+        if elapsed < cooldown:
+            cooldown_active = True
+            cooldown_remaining = int(cooldown - elapsed)
+
+    # Data source health
+    oi_source = _oi_cache.get("data", {}).get("source", "none")
+    oi_age = int(_time.time() - _oi_cache.get("timestamp", 0))
+    spot_source = "market_data_service" if _last_spot_data.get("ltp") else "google_finance"
+
+    # Filter statistics from metrics engine
+    filter_stats = {}
+    if hasattr(metrics_engine, '_filtered_reasons'):
+        filter_stats = dict(metrics_engine._filtered_reasons)
+
+    # Risk engine state
+    risk_status_data = risk_engine.get_status()
+
+    return {
+        "timestamp": now.isoformat(),
+        "cooldown": {
+            "active": cooldown_active,
+            "remaining_sec": cooldown_remaining,
+            "consecutive_losses": paper_engine._consecutive_losses,
+            "last_loss_epoch": paper_engine._last_loss_time,
+        },
+        "per_strike_entries": paper_engine._daily_strike_entries,
+        "day_trade_count": paper_engine.day_trade_count,
+        "max_trades_per_day": MAX_TRADES_PER_DAY,
+        "data_sources": {
+            "spot_source": spot_source,
+            "oi_source": oi_source,
+            "oi_cache_age_sec": oi_age,
+            "iv_cache": {
+                "ce_iv": _iv_cache.get("ce_iv", 15.0),
+                "pe_iv": _iv_cache.get("pe_iv", 15.0),
+            },
+        },
+        "market_state": {
+            "is_market_open": _is_market_open(),
+            "candle_count": market_store.candle_count,
+            "minute_of_day": _minute_of_day(),
+        },
+        "risk_engine": risk_status_data,
+        "filter_stats": filter_stats,
+        "capital": round(paper_engine.capital, 2),
+        "daily_pnl": round(paper_engine.daily_pnl, 2),
+        "active_trades": len(paper_engine.active_trades),
+    }
 
 
 # ──────────────────────────────────────────────────────────────────

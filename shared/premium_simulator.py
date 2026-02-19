@@ -53,6 +53,9 @@ class PremiumSimulator:
         premium = sim.tick(new_spot=23015, elapsed_seconds=5, iv_change=0.1)
     """
 
+    # GAP-7: India 10Y Govt bond yield (~6.5% as of 2026)
+    RISK_FREE_RATE = 0.065
+
     def __init__(
         self,
         spot: float,
@@ -61,6 +64,7 @@ class PremiumSimulator:
         days_to_expiry: float = 3.0,
         iv: float = 15.0,
         lot_size: int = 65,
+        risk_free_rate: float | None = None,
     ):
         self.spot = spot
         self.strike = strike
@@ -68,6 +72,7 @@ class PremiumSimulator:
         self.dte = max(days_to_expiry, 0.01)
         self.iv = iv
         self.lot_size = lot_size
+        self.r = risk_free_rate if risk_free_rate is not None else self.RISK_FREE_RATE
 
         # Initialise greeks
         self._greeks = self._compute_greeks()
@@ -138,6 +143,7 @@ class PremiumSimulator:
         k = self.strike
         t = self.dte / 365.0
         sigma = self.iv / 100.0
+        r = self.r  # GAP-7: risk-free rate
         is_call = self.option_type == "CE"
 
         if t <= 0 or sigma <= 0:
@@ -152,8 +158,8 @@ class PremiumSimulator:
             )
 
         sqrt_t = math.sqrt(t)
-        d1 = (math.log(s / k) + (0.5 * sigma ** 2) * t) / (sigma * sqrt_t)
-        # d2 = d1 - sigma * sqrt_t
+        d1 = (math.log(s / k) + (r + 0.5 * sigma ** 2) * t) / (sigma * sqrt_t)
+        d2 = d1 - sigma * sqrt_t
 
         # ── Delta ──
         nd1 = self._norm_cdf(d1)
@@ -163,8 +169,12 @@ class PremiumSimulator:
         nprime_d1 = self._norm_pdf(d1)
         gamma = nprime_d1 / (s * sigma * sqrt_t) if s > 0 else 0.0
 
-        # ── Theta ── (per day, in premium terms)
+        # ── Theta ── (per day, in premium terms, with risk-free rate)
         theta_annual = -(s * nprime_d1 * sigma) / (2 * sqrt_t)
+        if is_call:
+            theta_annual -= r * k * math.exp(-r * t) * self._norm_cdf(d2)
+        else:
+            theta_annual += r * k * math.exp(-r * t) * self._norm_cdf(-d2)
         theta_daily = theta_annual / 365.0
 
         # ── Vega ── (per 1% IV change)
@@ -179,24 +189,25 @@ class PremiumSimulator:
         )
 
     def _bs_price(self) -> float:
-        """Black-Scholes price (simplified, no risk-free rate)."""
+        """Black-Scholes price with risk-free rate (GAP-7)."""
         s = self.spot
         k = self.strike
         t = self.dte / 365.0
         sigma = self.iv / 100.0
+        r = self.r
         is_call = self.option_type == "CE"
 
         if t <= 0 or sigma <= 0:
             return max(0, s - k) if is_call else max(0, k - s)
 
         sqrt_t = math.sqrt(t)
-        d1 = (math.log(s / k) + (0.5 * sigma ** 2) * t) / (sigma * sqrt_t)
+        d1 = (math.log(s / k) + (r + 0.5 * sigma ** 2) * t) / (sigma * sqrt_t)
         d2 = d1 - sigma * sqrt_t
 
         if is_call:
-            price = s * self._norm_cdf(d1) - k * self._norm_cdf(d2)
+            price = s * self._norm_cdf(d1) - k * math.exp(-r * t) * self._norm_cdf(d2)
         else:
-            price = k * self._norm_cdf(-d2) - s * self._norm_cdf(-d1)
+            price = k * math.exp(-r * t) * self._norm_cdf(-d2) - s * self._norm_cdf(-d1)
 
         return max(0.05, round(price, 2))
 
