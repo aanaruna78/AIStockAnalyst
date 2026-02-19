@@ -7,15 +7,19 @@ Each entry contains trade details, failure reason, and timestamp.
 import json
 import os
 from datetime import datetime
-import pytz
+
+try:
+    import pytz
+    IST = pytz.timezone("Asia/Kolkata")
+except ImportError:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FAILED_TRADES_FILE = os.environ.get(
     "FAILED_TRADES_FILE",
     os.path.join(BASE_DIR, "data", "failed_trades.json")
 )
-
-IST = pytz.timezone("Asia/Kolkata")
 
 
 def _load_failed_trades():

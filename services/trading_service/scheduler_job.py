@@ -4,7 +4,13 @@ import httpx
 import os
 import sys
 from datetime import datetime
-import pytz
+
+try:
+    import pytz
+    IST = pytz.timezone("Asia/Kolkata")
+except ImportError:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from shared.config import settings
@@ -14,7 +20,6 @@ API_GATEWAY_URL = f"{settings.API_GATEWAY_URL}/api/v1"
 TRADING_SERVICE_URL = settings.TRADING_SERVICE_URL
 
 # IST timezone for market hours
-IST = pytz.timezone("Asia/Kolkata")
 
 scheduler = AsyncIOScheduler(timezone=IST)
 

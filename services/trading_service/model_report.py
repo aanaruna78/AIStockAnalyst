@@ -7,11 +7,15 @@ and provides data for the admin UI feedback loop.
 import json
 import os
 from datetime import datetime
-import pytz
+
+try:
+    import pytz
+    IST = pytz.timezone("Asia/Kolkata")
+except ImportError:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
 
 from failed_trade_log import get_failed_trades_today, get_trade_failure_stats
-
-IST = pytz.timezone("Asia/Kolkata")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REPORT_FILE = os.environ.get(
     "MODEL_REPORT_FILE",
