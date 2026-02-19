@@ -5,7 +5,13 @@ import sys
 from datetime import datetime
 from typing import Dict, Optional
 import uuid
-import pytz
+
+try:
+    import pytz
+    IST = pytz.timezone("Asia/Kolkata")
+except ImportError:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
 
 # Fix path to import shared models
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -123,8 +129,7 @@ class TradeManager:
         """
 
         # === SAFETY GATE 1: Time gate — no trades before 9:20 AM IST ===
-        ist = pytz.timezone("Asia/Kolkata")
-        now = datetime.now(ist)
+        now = datetime.now(IST)
         market_start = now.replace(hour=9, minute=20, second=0, microsecond=0)
         market_end = now.replace(hour=15, minute=15, second=0, microsecond=0)
         if now.time() < market_start.time() or now.time() > market_end.time():
@@ -223,7 +228,6 @@ class TradeManager:
         t_type = TradeType.SELL if trade_type.upper() == "SELL" else TradeType.BUY
 
         # Create trade
-        ist = pytz.timezone("Asia/Kolkata")
         trade = Trade(
             id=str(uuid.uuid4()),
             symbol=symbol,
@@ -231,7 +235,7 @@ class TradeManager:
             status=TradeStatus.OPEN,
             entry_price=entry_price,
             quantity=quantity,
-            entry_time=datetime.now(ist),
+            entry_time=datetime.now(IST),
             target=target,
             stop_loss=stop_loss,
             conviction=conviction,
@@ -264,7 +268,7 @@ class TradeManager:
                 "symbol": symbol,
                 "total_qty": quantity,
                 "num_slices": len(iceberg.slices),
-                "created_at": datetime.now(ist).isoformat(),
+                "created_at": datetime.now(IST).isoformat(),
             })
             print(f"[TradeManager] ICEBERG: {symbol} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity} each")
 
@@ -297,8 +301,7 @@ class TradeManager:
         # Update Trade
         trade.status = TradeStatus.CLOSED
         trade.exit_price = exit_price
-        ist = pytz.timezone("Asia/Kolkata")
-        trade.exit_time = datetime.now(ist)
+        trade.exit_time = datetime.now(IST)
         trade.pnl = round(pnl, 2)
         trade.pnl_percent = round(pnl_percent, 2)
         trade.rationale_summary = f"{trade.rationale_summary} | Exit: {reason}" if trade.rationale_summary else f"Exit: {reason}"
