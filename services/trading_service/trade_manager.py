@@ -72,6 +72,8 @@ class TradeManager:
         )
         # Iceberg order history
         self.iceberg_orders: list = []
+        # Margin blocked per trade (for leveraged trades)
+        self._margin_blocked: Dict[str, float] = {}
         # ── Per-symbol cooldown tracking ──
         self._symbol_last_exit: Dict[str, float] = {}   # symbol -> epoch time of last SL exit
         self._symbol_entries_today: Dict[str, int] = {}  # symbol -> count of entries today
@@ -89,6 +91,7 @@ class TradeManager:
                     # Restore trailing SL states
                     self._trail_states = data.get("_trail_states", {})
                     self.iceberg_orders = data.get("iceberg_orders", [])
+                    self._margin_blocked = data.get("_margin_blocked", {})
                     # GAP-9: restore cooldown state across restarts
                     cs = data.get("_cooldown_state", {})
                     self._symbol_last_exit = cs.get("symbol_last_exit", {})
@@ -107,6 +110,7 @@ class TradeManager:
             data = json.loads(self.portfolio.model_dump_json())
             data["_trail_states"] = self._trail_states
             data["iceberg_orders"] = self.iceberg_orders[-100:]  # Keep last 100
+            data["_margin_blocked"] = self._margin_blocked
             # GAP-9: persist cooldown state across restarts
             data["_cooldown_state"] = {
                 "symbol_last_exit": self._symbol_last_exit,
@@ -120,12 +124,13 @@ class TradeManager:
 
     def place_order(self, symbol: str, entry_price: float, target: float, stop_loss: float, 
                     conviction: float, rationale: str = "", quantity: int = 0,
-                    trade_type: str = "BUY") -> Optional[Trade]:
+                    trade_type: str = "BUY", leverage: int = 1) -> Optional[Trade]:
         """
         Execute a paper trade order (BUY or SELL/SHORT).
         Allocates ~20k per trade if quantity is not specified.
         For SHORT: margin is blocked same as buy cost (simplified paper trading).
         Uses limit order offset: entry_price already has +0.1% LTP applied by caller.
+        Leverage: for intraday (leverage=3), margin blocked = cost / leverage.
         """
 
         # === SAFETY GATE 1: Time gate — no trades before 9:20 AM IST ===
@@ -182,6 +187,9 @@ class TradeManager:
 
         cost = quantity * entry_price
 
+        # Intraday leverage: margin requirement is cost / leverage
+        margin_required = cost / max(1, leverage)
+
         # === SAFETY GATE 4: Max loss per trade (3% of current capital) ===
         MAX_LOSS_PER_TRADE_PCT = 0.03
         max_allowed_loss = MAX_LOSS_PER_TRADE_PCT * self.portfolio.cash_balance
@@ -197,7 +205,7 @@ class TradeManager:
         # === SAFETY GATE 5: Max drawdown protection (don't go below 50% of initial capital) ===
         MAX_DRAWDOWN = 0.50
         floor = INITIAL_CAPITAL * (1 - MAX_DRAWDOWN)
-        if (self.portfolio.cash_balance - cost) < floor:
+        if (self.portfolio.cash_balance - margin_required) < floor:
             print(f"[TradeManager] ⛔ BLOCKED: Would breach {MAX_DRAWDOWN*100:.0f}% drawdown floor (₹{floor:,.0f}).")
             return None
 
@@ -217,13 +225,13 @@ class TradeManager:
                 print(f"[TradeManager] ⚠️ Fixing SELL target: {target} >= entry {entry_price}. Setting target to entry * 0.97")
                 target = round(entry_price * 0.97, 2)
 
-        # Final funds check
-        if self.portfolio.cash_balance < cost:
-            print(f"[TradeManager] Insufficient funds for {symbol}. Needed: ₹{cost:,.0f}, Available: ₹{self.portfolio.cash_balance:,.0f}")
+        # Final funds check (against margin, not full notional)
+        if self.portfolio.cash_balance < margin_required:
+            print(f"[TradeManager] Insufficient funds for {symbol}. Margin needed: ₹{margin_required:,.0f} (notional ₹{cost:,.0f}, {leverage}x lev), Available: ₹{self.portfolio.cash_balance:,.0f}")
             return None
 
-        # Deduct cash (margin block for both BUY and SHORT)
-        self.portfolio.cash_balance -= cost
+        # Deduct margin (margin block for both BUY and SHORT)
+        self.portfolio.cash_balance -= margin_required
 
         t_type = TradeType.SELL if trade_type.upper() == "SELL" else TradeType.BUY
 
@@ -242,6 +250,9 @@ class TradeManager:
             rationale_summary=rationale
         )
 
+        # Track margin blocked for this trade (for correct cash return on close)
+        self._margin_blocked[trade.id] = margin_required
+
         self.portfolio.active_trades.append(trade)
 
         # Track per-symbol entries today
@@ -257,20 +268,23 @@ class TradeManager:
 
         # --- Iceberg order tracking (informational for paper trading) ---
         if quantity > ICEBERG_QTY_THRESHOLD:
-            iceberg = IcebergEngine.create_stock_iceberg(
-                symbol=symbol,
-                side="BUY" if t_type == TradeType.BUY else "SELL",
-                total_qty=quantity,
-                price=entry_price,
-            )
-            self.iceberg_orders.append({
-                "trade_id": trade.id,
-                "symbol": symbol,
-                "total_qty": quantity,
-                "num_slices": len(iceberg.slices),
-                "created_at": datetime.now(IST).isoformat(),
-            })
-            print(f"[TradeManager] ICEBERG: {symbol} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity} each")
+            try:
+                iceberg = IcebergEngine.create_stock_iceberg(
+                    symbol=symbol,
+                    trade_type="BUY" if t_type == TradeType.BUY else "SELL",
+                    quantity=quantity,
+                    price=entry_price,
+                )
+                self.iceberg_orders.append({
+                    "trade_id": trade.id,
+                    "symbol": symbol,
+                    "total_qty": quantity,
+                    "num_slices": len(iceberg.slices),
+                    "created_at": datetime.now(IST).isoformat(),
+                })
+                print(f"[TradeManager] ICEBERG: {symbol} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity} each")
+            except Exception as e:
+                print(f"[TradeManager] Iceberg planning skipped for {symbol}: {e}")
 
         self.save_state()
         print(f"[TradeManager] {t_type.value} EXECUTED: {symbol} @ {entry_price} | Qty: {quantity} (3x lev) | Target: {target} | SL: {stop_loss}")
@@ -283,18 +297,18 @@ class TradeManager:
             return
 
         cost = trade.quantity * trade.entry_price
+        margin = self._margin_blocked.pop(trade.id, cost)  # Default to full cost if leverage unknown
 
         # Calculate P&L based on trade type
         if trade.type == TradeType.SELL:
             # SHORT: profit when price goes down → P&L = (entry - exit) * qty
             pnl = (trade.entry_price - exit_price) * trade.quantity
-            # Return the original margin + profit (or - loss)
-            cash_return = cost + pnl
         else:
             # LONG/BUY: profit when price goes up → P&L = (exit - entry) * qty
             pnl = (exit_price - trade.entry_price) * trade.quantity
-            cash_return = trade.quantity * exit_price
 
+        # Return: margin blocked + P&L
+        cash_return = margin + pnl
         pnl_percent = (pnl / cost) * 100 if cost > 0 else 0
 
 

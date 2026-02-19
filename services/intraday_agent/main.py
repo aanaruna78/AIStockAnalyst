@@ -242,7 +242,8 @@ class IntradayAgent:
                         "sl": round(sl, 2),
                         "conviction": conviction,
                         "quantity": quantity,
-                        "trade_type": trade_type
+                        "trade_type": trade_type,
+                        "leverage": INTRADAY_LEVERAGE
                     }
                 )
                 if resp.status_code == 200:

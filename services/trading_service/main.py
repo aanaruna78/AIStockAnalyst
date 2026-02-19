@@ -165,8 +165,8 @@ async def get_portfolio():
     return trade_manager.get_portfolio_summary()
 
 @app.post("/trade/manual")
-async def place_manual_order(symbol: str, price: float, target: float, sl: float, conviction: float, quantity: int = 0, trade_type: str = "BUY"):
-    trade = trade_manager.place_order(symbol, price, target, sl, conviction, "Manual Trade", quantity, trade_type=trade_type)
+async def place_manual_order(symbol: str, price: float, target: float, sl: float, conviction: float, quantity: int = 0, trade_type: str = "BUY", leverage: int = 1):
+    trade = trade_manager.place_order(symbol, price, target, sl, conviction, "Manual Trade", quantity, trade_type=trade_type, leverage=leverage)
     if not trade:
         raise HTTPException(status_code=400, detail="Order failed (Insufficient funds or error)")
     return trade
