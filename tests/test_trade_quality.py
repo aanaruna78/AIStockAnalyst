@@ -14,12 +14,13 @@ from datetime import datetime
 try:
     import pytz
     IST = pytz.timezone("Asia/Kolkata")
-
-    def _today():
-        return datetime.now(IST).strftime("%Y-%m-%d")
 except ImportError:
-    def _today():
-        return datetime.now().strftime("%Y-%m-%d")
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
+
+def _today():
+    return datetime.now(IST).strftime("%Y-%m-%d")
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
