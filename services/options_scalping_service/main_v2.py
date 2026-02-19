@@ -154,6 +154,7 @@ class PaperTradingEngine:
         self._last_loss_time: float = 0        # epoch secs of last loss
         self._consecutive_losses: int = 0       # running consecutive loss count
         self._daily_strike_entries: dict = {}   # {f"{strike}-{dir}": count} per day
+        self._test_now = None  # Override for testing (set to a datetime to bypass real clock)
         self._load()
 
     def _load(self):
@@ -202,8 +203,14 @@ class PaperTradingEngine:
         except Exception as e:
             logger.error(f"Failed to save paper trades: {e}")
 
+    def _get_current_time(self):
+        """Get current IST time. Overridable for testing via _test_now."""
+        if self._test_now is not None:
+            return self._test_now
+        return datetime.now(IST)
+
     def _reset_daily(self):
-        today = datetime.now(IST).strftime("%Y-%m-%d")
+        today = self._get_current_time().strftime("%Y-%m-%d")
         if self.current_date != today:
             self.current_date = today
             self.daily_pnl = 0.0
@@ -245,8 +252,8 @@ class PaperTradingEngine:
         if len(self.active_trades) > 0:
             return {"status": "rejected", "reason": "Close existing position before opening new"}
 
-        now = datetime.now(IST)
-        if now.hour >= SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN:
+        now = self._get_current_time()
+        if (now.hour > SQUARE_OFF_HOUR) or (now.hour == SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN):
             return {"status": "rejected", "reason": "Past intraday cutoff (3:15 PM)"}
 
         # ── Cooldown after consecutive losses ──
@@ -1052,7 +1059,7 @@ def _risk_loop():
 
             now = datetime.now(IST)
             # Intraday square-off
-            if now.hour >= SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN:
+            if (now.hour > SQUARE_OFF_HOUR) or (now.hour == SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN):
                 for trade in list(paper_engine.active_trades):
                     sim = paper_engine._premium_sims.get(trade["trade_id"])
                     exit_prem = sim.premium if sim else trade["entry_premium"]

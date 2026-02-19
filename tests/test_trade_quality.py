@@ -44,6 +44,8 @@ class TestOptionsGreeksFiltering:
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
         # Ensure risk engine is ready
         risk_engine.reset_daily(500000, today)
         return engine
@@ -133,6 +135,8 @@ class TestOptionsCooldown:
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
         risk_engine.reset_daily(500000, today)
         return engine
 
@@ -198,6 +202,8 @@ class TestOptionsStrikeLimit:
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
         risk_engine.reset_daily(500000, today)
         return engine
 
