@@ -37,11 +37,12 @@ CHART_ANALYSIS_URL = os.getenv("CHART_ANALYSIS_URL", "http://chart-analysis-serv
 # Agent parameters
 AGENT_LOOP_INTERVAL = int(os.getenv("AGENT_LOOP_INTERVAL", "15"))       # seconds — faster monitoring for intraday
 MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "5"))                     # fewer positions for tighter focus
-MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "50000"))
+MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "15000"))  # margin per trade (allows ~5 positions in 100k)
 MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "40"))  # higher conviction for intraday
 TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "0.5"))  # 0.5% — tighter trailing for intraday
 INTRADAY_LEVERAGE = 3        # 3x margin leverage for intraday stocks
 ICEBERG_QTY_THRESHOLD = 500  # Use iceberg above this qty
+MAX_RISK_PER_TRADE = float(os.getenv("MAX_RISK_PER_TRADE", "2500"))  # max SL loss per trade (₹)
 MARKET_OPEN = dtime(9, 20)   # Start trading at 9:20 AM IST (skip first 5 min volatility)
 MARKET_CLOSE = dtime(15, 15)
 SQUARE_OFF_TIME = dtime(15, 10)  # Square off 5 min before close
@@ -213,9 +214,20 @@ class IntradayAgent:
 
         conviction = rec.get("conviction", 0)
         rec.get("rationale", "") or rec.get("summary", "")
-        # Apply 3x intraday leverage
+        # Apply 3x intraday leverage with risk-based sizing
         base_qty = max(1, int(MAX_CAPITAL_PER_TRADE / entry))
         quantity = base_qty * INTRADAY_LEVERAGE
+
+        # Cap quantity so projected SL loss stays within MAX_RISK_PER_TRADE
+        sl_distance = abs(entry - sl)
+        if sl_distance > 0:
+            max_qty_by_risk = int(MAX_RISK_PER_TRADE / sl_distance)
+            if max_qty_by_risk < 1:
+                max_qty_by_risk = 1
+            if quantity > max_qty_by_risk:
+                self.log_action("QTY_CAPPED", symbol,
+                    f"Risk cap: {quantity} → {max_qty_by_risk} (SL dist ₹{sl_distance:.1f}, max risk ₹{MAX_RISK_PER_TRADE})")
+                quantity = max_qty_by_risk
 
         # Log iceberg info if large qty (informational only — does not block trade)
         if quantity > ICEBERG_QTY_THRESHOLD:

@@ -190,9 +190,9 @@ class TradeManager:
         # Intraday leverage: margin requirement is cost / leverage
         margin_required = cost / max(1, leverage)
 
-        # === SAFETY GATE 4: Max loss per trade (3% of current capital) ===
+        # === SAFETY GATE 4: Max loss per trade (3% of initial capital — avoids death spiral) ===
         MAX_LOSS_PER_TRADE_PCT = 0.03
-        max_allowed_loss = MAX_LOSS_PER_TRADE_PCT * self.portfolio.cash_balance
+        max_allowed_loss = MAX_LOSS_PER_TRADE_PCT * INITIAL_CAPITAL
         # Use stop-loss distance as projected max loss
         if trade_type.upper() == "BUY":
             projected_loss = (entry_price - stop_loss) * quantity if stop_loss > 0 else cost * 0.05
@@ -205,8 +205,15 @@ class TradeManager:
         # === SAFETY GATE 5: Max drawdown protection (don't go below 50% of initial capital) ===
         MAX_DRAWDOWN = 0.50
         floor = INITIAL_CAPITAL * (1 - MAX_DRAWDOWN)
-        if (self.portfolio.cash_balance - margin_required) < floor:
-            print(f"[TradeManager] ⛔ BLOCKED: Would breach {MAX_DRAWDOWN*100:.0f}% drawdown floor (₹{floor:,.0f}).")
+        # Use total portfolio value (cash + unrealized) for drawdown check
+        unrealized = sum(
+            (t.current_price - t.entry_price) * t.quantity * (1 if t.type == TradeType.BUY else -1)
+            for t in self.portfolio.active_trades
+            if t.current_price is not None
+        )
+        total_value = self.portfolio.cash_balance + unrealized
+        if (total_value - margin_required) < floor:
+            print(f"[TradeManager] ⛔ BLOCKED: Would breach {MAX_DRAWDOWN*100:.0f}% drawdown floor (₹{floor:,.0f}). Portfolio value: ₹{total_value:,.0f}")
             return None
 
         # === SAFETY GATE 6: Stop-loss sanity check ===
