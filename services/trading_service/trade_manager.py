@@ -28,6 +28,10 @@ INITIAL_CAPITAL = 100000.0  # ₹1,00,000 starting capital for paper trading
 INTRADAY_LEVERAGE = 3       # 3x margin leverage for intraday stocks
 ICEBERG_QTY_THRESHOLD = 500 # Use iceberg above this qty
 
+# ── Per-symbol cooldown & re-entry limits ────────────────────────
+SYMBOL_COOLDOWN_SEC = 1800     # 30 min cooldown after SL hit on same symbol
+MAX_ENTRIES_PER_SYMBOL_DAY = 2 # Max 2 entries per symbol per day
+
 # v2: Equity ATR-based risk engine
 equity_risk_engine = RiskEngine(RiskConfig(
     mode=RiskMode.EQUITY_ATR,
@@ -53,15 +57,19 @@ class TradeManager:
         self._trail_states: Dict[str, dict] = {}
         self._trail_config = TrailConfig(
             strategy=TrailStrategy.HYBRID,
-            trail_pct=0.5,
-            activation_pct=0.3,
-            step_size_pct=0.5,
-            step_lock_pct=0.3,
-            breakeven_trigger_pct=0.5,
-            min_trail_pct=0.2,
+            trail_pct=1.2,
+            activation_pct=0.8,
+            step_size_pct=0.8,
+            step_lock_pct=0.5,
+            breakeven_trigger_pct=1.0,
+            min_trail_pct=0.5,
         )
         # Iceberg order history
         self.iceberg_orders: list = []
+        # ── Per-symbol cooldown tracking ──
+        self._symbol_last_exit: Dict[str, float] = {}   # symbol -> epoch time of last SL exit
+        self._symbol_entries_today: Dict[str, int] = {}  # symbol -> count of entries today
+        self._today_date: str = ""
         self.load_state()
 
     def load_state(self):
@@ -110,6 +118,29 @@ class TradeManager:
         market_end = now.replace(hour=15, minute=15, second=0, microsecond=0)
         if now.time() < market_start.time() or now.time() > market_end.time():
             print(f"[TradeManager] ⛔ BLOCKED: Outside trading hours ({now.strftime('%H:%M IST')}). Trades only 9:20-15:15.")
+            return None
+
+        # === SAFETY GATE 1b: Reset daily per-symbol counters if new day ===
+        today_str = now.strftime("%Y-%m-%d")
+        if self._today_date != today_str:
+            self._today_date = today_str
+            self._symbol_entries_today = {}
+            self._symbol_last_exit = {}
+
+        # === SAFETY GATE 1c: Per-symbol cooldown after SL hit ===
+        import time as _wall_time
+        last_exit_epoch = self._symbol_last_exit.get(symbol, 0)
+        if last_exit_epoch > 0:
+            elapsed = _wall_time.time() - last_exit_epoch
+            if elapsed < SYMBOL_COOLDOWN_SEC:
+                remaining = int(SYMBOL_COOLDOWN_SEC - elapsed)
+                print(f"[TradeManager] ⛔ BLOCKED: {symbol} cooldown active — {remaining}s remaining after SL hit.")
+                return None
+
+        # === SAFETY GATE 1d: Max entries per symbol per day ===
+        sym_entries = self._symbol_entries_today.get(symbol, 0)
+        if sym_entries >= MAX_ENTRIES_PER_SYMBOL_DAY:
+            print(f"[TradeManager] ⛔ BLOCKED: {symbol} already entered {sym_entries} times today (max {MAX_ENTRIES_PER_SYMBOL_DAY}).")
             return None
 
         # === SAFETY GATE 2: Feedback loop — block symbols with repeated failures ===
@@ -198,6 +229,9 @@ class TradeManager:
 
         self.portfolio.active_trades.append(trade)
 
+        # Track per-symbol entries today
+        self._symbol_entries_today[symbol] = self._symbol_entries_today.get(symbol, 0) + 1
+
         # --- Initialize trailing SL state for this trade ---
         trail_state = TrailingStopLossEngine.create_state(
             entry_price=entry_price,
@@ -261,6 +295,12 @@ class TradeManager:
         # Log failed trades for model learning (large loss or stop loss hit)
         if pnl < -0.03 * cost or reason.lower().startswith("stop loss") or reason.lower().startswith("intraday square-off"):
             log_failed_trade(trade, reason)
+
+        # ── Per-symbol cooldown: record exit time on SL/trailing SL exits ──
+        if pnl < 0 and ("sl" in reason.lower() or "stop" in reason.lower() or "trailing" in reason.lower()):
+            import time as _wall_time
+            self._symbol_last_exit[trade.symbol] = _wall_time.time()
+            print(f"[TradeManager] Cooldown set for {trade.symbol}: {SYMBOL_COOLDOWN_SEC}s after SL hit")
 
         # Update Portfolio
         self.portfolio.cash_balance += cash_return

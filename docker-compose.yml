@@ -294,7 +294,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn main_v2:app --host 0.0.0.0 --port 8000 --reload
 
   # ─── Kafka & Zookeeper (optional — trade streaming) ────────────
 

@@ -15,7 +15,11 @@ class TestIcebergThresholds:
 
     def test_option_below_threshold(self):
         assert IcebergEngine.should_iceberg_option(3) is False
-        assert IcebergEngine.should_iceberg_option(5) is False
+        assert IcebergEngine.should_iceberg_option(4) is False
+
+    def test_option_at_threshold(self):
+        """5 lots triggers iceberg — splits into 2+2+1 slices."""
+        assert IcebergEngine.should_iceberg_option(5) is True
 
     def test_option_above_threshold(self):
         assert IcebergEngine.should_iceberg_option(6) is True
@@ -32,6 +36,23 @@ class TestIcebergThresholds:
 
 class TestIcebergCreation:
     """Test create_iceberg and convenience methods."""
+
+    def test_option_iceberg_5_lots(self):
+        """5 lots (threshold) splits into 3 slices: 2+2+1 lots."""
+        order = IcebergEngine.create_option_iceberg(
+            symbol="NIFTY-25800-CE",
+            trade_type="BUY",
+            lots=5,
+            premium=136.0,
+            lot_size=65,
+        )
+        assert order.total_quantity == 325
+        assert len(order.slices) == 3  # 2+2+1
+        assert order.slices[0].quantity == 130  # 2 lots
+        assert order.slices[1].quantity == 130  # 2 lots
+        assert order.slices[2].quantity == 65   # 1 lot
+        total_qty = sum(s.quantity for s in order.slices)
+        assert total_qty == 325
 
     def test_option_iceberg_split(self):
         order = IcebergEngine.create_option_iceberg(

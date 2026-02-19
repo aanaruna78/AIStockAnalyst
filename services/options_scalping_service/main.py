@@ -218,15 +218,15 @@ class PaperTradingEngine:
             "original_premium": entry_premium,
             "slippage_pct": round(slippage_pct * 100, 4),
             "latency_ms": latency_ms,
-            "sl_premium": round(slipped_premium * (1 - SL_PCT / 0.003), 2),  # SL ~50% of premium move
-            "target_premium": round(slipped_premium * (1 + TARGET_PCT / 0.003), 2),
+            "sl_premium": round(slipped_premium * 0.90, 2),  # SL at 10% below entry premium
+            "target_premium": round(slipped_premium * 1.12, 2),  # Target at 12% above entry premium
             "status": "OPEN",
             "entry_time": now.isoformat(),
             "quantity": NIFTY_LOT_SIZE * lots,
             "indicators": indicators or {},
             "user_id": user_id,
             "is_intraday": True,
-            "iceberg_used": lots > ICEBERG_THRESHOLD_LOTS,
+            "iceberg_used": lots >= ICEBERG_THRESHOLD_LOTS,
         }
 
         # Initialize trailing SL state for this trade
@@ -238,8 +238,8 @@ class PaperTradingEngine:
         )
         self._trail_states[trade["trade_id"]] = TrailingStopLossEngine.state_to_dict(trail_state)
 
-        # Handle Iceberg if lots > threshold
-        if lots > ICEBERG_THRESHOLD_LOTS:
+        # Handle Iceberg if lots >= threshold (5 lots splits into 2+2+1)
+        if lots >= ICEBERG_THRESHOLD_LOTS:
             iceberg = IcebergEngine.create_option_iceberg(
                 symbol=f"NIFTY-{strike}-{direction}",
                 trade_type="BUY",

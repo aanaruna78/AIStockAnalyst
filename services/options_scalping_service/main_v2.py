@@ -73,6 +73,18 @@ SLIPPAGE_MAX = 0.0003
 LATENCY_MIN_MS = 50
 LATENCY_MAX_MS = 200
 
+# ── Greeks Filtering Thresholds ──────────────────────────────────
+MIN_DELTA_ABS = 0.25          # Reject deep OTM (delta < 0.25)
+MAX_DELTA_ABS = 0.75          # Reject deep ITM (delta > 0.75)
+MIN_PREMIUM = 5.0             # Reject options priced below ₹5
+MAX_THETA_PCT_OF_PREMIUM = 5.0  # Reject if |theta/day| > 5% of premium
+MIN_GAMMA = 0.0005            # Minimum gamma for meaningful delta moves
+
+# ── Cooldown Configuration ───────────────────────────────────────
+LOSS_COOLDOWN_SEC = 300       # 5 min cooldown after a loss
+CONSEC_LOSS_COOLDOWN_SEC = 600  # 10 min after 2+ consecutive losses
+MAX_SAME_STRIKE_PER_DAY = 2   # Max entries at same strike/direction per day
+
 
 # ──────────────────────────────────────────────────────────────────
 # Data Models
@@ -138,6 +150,10 @@ class PaperTradingEngine:
         self._premium_sims: dict = {}
         # Candle index counter
         self._candle_idx: int = 0
+        # ── Cooldown tracking ──
+        self._last_loss_time: float = 0        # epoch secs of last loss
+        self._consecutive_losses: int = 0       # running consecutive loss count
+        self._daily_strike_entries: dict = {}   # {f"{strike}-{dir}": count} per day
         self._load()
 
     def _load(self):
@@ -181,6 +197,9 @@ class PaperTradingEngine:
             self.current_date = today
             self.daily_pnl = 0.0
             self.day_trade_count = 0
+            self._consecutive_losses = 0
+            self._last_loss_time = 0
+            self._daily_strike_entries = {}
             risk_engine.reset_daily(self.capital, today)
             metrics_engine.reset_daily()
             market_store.reset_session()
@@ -200,6 +219,7 @@ class PaperTradingEngine:
         regime: str = "",
         breakout_level: float = 0.0,
         entry_mode: str = "",
+        greeks: dict = None,
     ) -> dict:
         self._reset_daily()
 
@@ -217,6 +237,40 @@ class PaperTradingEngine:
         now = datetime.now(IST)
         if now.hour >= SQUARE_OFF_HOUR and now.minute >= SQUARE_OFF_MIN:
             return {"status": "rejected", "reason": "Past intraday cutoff (3:15 PM)"}
+
+        # ── Cooldown after consecutive losses ──
+        if self._last_loss_time > 0:
+            elapsed = _time.time() - self._last_loss_time
+            cooldown = CONSEC_LOSS_COOLDOWN_SEC if self._consecutive_losses >= 2 else LOSS_COOLDOWN_SEC
+            if elapsed < cooldown:
+                remaining = int(cooldown - elapsed)
+                return {"status": "rejected", "reason": f"Cooldown active: {remaining}s remaining after {self._consecutive_losses} consecutive loss(es)"}
+
+        # ── Per-strike daily limit ──
+        strike_key = f"{strike}-{direction}"
+        entries_today = self._daily_strike_entries.get(strike_key, 0)
+        if entries_today >= MAX_SAME_STRIKE_PER_DAY:
+            return {"status": "rejected", "reason": f"Max {MAX_SAME_STRIKE_PER_DAY} entries per day for {direction} {strike}"}
+
+        # ── Greeks validation ──
+        if greeks:
+            delta_abs = abs(greeks.get("delta", 0.5))
+            gamma_val = abs(greeks.get("gamma", 0.001))
+            theta_val = abs(greeks.get("theta", 0))
+
+            if delta_abs < MIN_DELTA_ABS:
+                return {"status": "rejected", "reason": f"Delta {delta_abs:.3f} < {MIN_DELTA_ABS} — too far OTM, low probability of profit"}
+            if delta_abs > MAX_DELTA_ABS:
+                return {"status": "rejected", "reason": f"Delta {delta_abs:.3f} > {MAX_DELTA_ABS} — too deep ITM, poor risk/reward"}
+            if gamma_val < MIN_GAMMA:
+                return {"status": "rejected", "reason": f"Gamma {gamma_val:.5f} < {MIN_GAMMA} — insufficient delta sensitivity"}
+            if entry_premium > 0 and theta_val > 0:
+                theta_pct = (theta_val / entry_premium) * 100
+                if theta_pct > MAX_THETA_PCT_OF_PREMIUM:
+                    return {"status": "rejected", "reason": f"Theta decay {theta_pct:.1f}%/day > {MAX_THETA_PCT_OF_PREMIUM}% — rapid time decay"}
+
+        if entry_premium < MIN_PREMIUM:
+            return {"status": "rejected", "reason": f"Premium ₹{entry_premium:.2f} < ₹{MIN_PREMIUM} — too cheap, wide spreads"}
 
         # Capital gate: max 20% per trade
         max_cost = self.capital * risk_engine.config.max_capital_per_trade_pct
@@ -261,7 +315,7 @@ class PaperTradingEngine:
             "indicators": indicators or {},
             "user_id": user_id,
             "is_intraday": True,
-            "iceberg_used": lots > ICEBERG_THRESHOLD_LOTS,
+            "iceberg_used": lots >= ICEBERG_THRESHOLD_LOTS,
             # v2: momentum context
             "profile_id": profile_id,
             "regime": regime,
@@ -275,8 +329,8 @@ class PaperTradingEngine:
         trade_id = list(risk_engine._trade_states.keys())[-1] if risk_engine._trade_states else trade["trade_id"]
         trade["trade_id"] = trade_id
 
-        # Iceberg
-        if lots > ICEBERG_THRESHOLD_LOTS:
+        # Iceberg: trigger at >= threshold (5 lots splits into 2+2+1)
+        if lots >= ICEBERG_THRESHOLD_LOTS:
             iceberg = IcebergEngine.create_option_iceberg(
                 symbol=f"NIFTY-{strike}-{direction}",
                 trade_type="BUY",
@@ -299,6 +353,9 @@ class PaperTradingEngine:
 
         self.active_trades.append(trade)
         self.day_trade_count += 1
+        # Track per-strike entries for daily limit
+        strike_key = f"{strike}-{direction}"
+        self._daily_strike_entries[strike_key] = self._daily_strike_entries.get(strike_key, 0) + 1
         self._save()
 
         logger.info(f"MOMENTUM ENTRY: {direction} {strike} @ ₹{slipped_premium} x{lots}lots SL=₹{risk_params['sl']} TP1=₹{risk_params['tp1']} profile={profile_id}")
@@ -344,6 +401,14 @@ class PaperTradingEngine:
         self.capital += total_pnl
         self.daily_pnl += total_pnl
         self.total_pnl += total_pnl
+
+        # ── Track consecutive losses for cooldown ──
+        if total_pnl < 0:
+            self._consecutive_losses += 1
+            self._last_loss_time = _time.time()
+        else:
+            self._consecutive_losses = 0
+            self._last_loss_time = 0
 
         # v2: Record in risk engine + metrics + learning
         risk_engine.record_trade_result(total_pnl)
@@ -679,6 +744,15 @@ def _signal_loop():
                                       days_to_expiry=dte, iv=15.0)
                 entry_premium = sim.premium
 
+                # ── Greeks validation data for place_trade ──
+                greeks_data = {
+                    "delta": sim.greeks.delta,
+                    "gamma": sim.greeks.gamma,
+                    "theta": sim.greeks.theta,
+                    "vega": sim.greeks.vega,
+                    "iv": sim.greeks.iv,
+                }
+
                 result = paper_engine.place_trade(
                     direction=direction,
                     strike=atm_strike,
@@ -692,11 +766,13 @@ def _signal_loop():
                         "trend_score": signal.trend_score,
                         "regime": regime_result.regime.value,
                         "reasons": signal.reasons[:5],
+                        "greeks": greeks_data,
                     },
                     profile_id=profile.profile_id,
                     regime=regime_result.regime.value,
                     breakout_level=signal.breakout_level,
                     entry_mode=signal.entry_mode.value,
+                    greeks=greeks_data,
                 )
 
                 paper_engine.last_signal = {

@@ -103,8 +103,8 @@ class IcebergEngine:
     """
 
     # ── Options-specific constants ────────────────────────────────
-    OPTION_ICEBERG_THRESHOLD_LOTS = 5   # Trigger iceberg above 5 lots
-    OPTION_MAX_LOTS_PER_SLICE = 2       # Max 2 lots per slice (130 qty for Nifty)
+    OPTION_ICEBERG_THRESHOLD_LOTS = 5   # Trigger iceberg at 5+ lots
+    OPTION_MAX_LOTS_PER_SLICE = 2       # Max 2 lots per slice (e.g. 5 lots → 2+2+1)
     OPTION_SLICE_DELAY_MS = 300         # 300ms between option slices
 
     # ── Stock-specific constants ──────────────────────────────────
@@ -114,8 +114,8 @@ class IcebergEngine:
 
     @staticmethod
     def should_iceberg_option(lots: int) -> bool:
-        """Check if option order should use iceberg."""
-        return lots > IcebergEngine.OPTION_ICEBERG_THRESHOLD_LOTS
+        """Check if option order should use iceberg (>= 5 lots)."""
+        return lots >= IcebergEngine.OPTION_ICEBERG_THRESHOLD_LOTS
 
     @staticmethod
     def should_iceberg_stock(quantity: int) -> bool:
