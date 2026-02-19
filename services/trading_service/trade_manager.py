@@ -205,15 +205,16 @@ class TradeManager:
         # === SAFETY GATE 5: Max drawdown protection (don't go below 50% of initial capital) ===
         MAX_DRAWDOWN = 0.50
         floor = INITIAL_CAPITAL * (1 - MAX_DRAWDOWN)
-        # Use total portfolio value (cash + unrealized) for drawdown check
+        # Total equity = cash + all blocked margins (margin is a deposit, not a loss) + unrealized PnL
         unrealized = sum(
             (t.current_price - t.entry_price) * t.quantity * (1 if t.type == TradeType.BUY else -1)
             for t in self.portfolio.active_trades
             if t.current_price is not None
         )
-        total_value = self.portfolio.cash_balance + unrealized
-        if (total_value - margin_required) < floor:
-            print(f"[TradeManager] ⛔ BLOCKED: Would breach {MAX_DRAWDOWN*100:.0f}% drawdown floor (₹{floor:,.0f}). Portfolio value: ₹{total_value:,.0f}")
+        total_equity = self.portfolio.cash_balance + sum(self._margin_blocked.values()) + unrealized
+        # Block only if worst-case loss would breach floor
+        if (total_equity - projected_loss) < floor:
+            print(f"[TradeManager] ⛔ BLOCKED: Would breach {MAX_DRAWDOWN*100:.0f}% drawdown floor (₹{floor:,.0f}). Equity: ₹{total_equity:,.0f}")
             return None
 
         # === SAFETY GATE 6: Stop-loss sanity check ===
