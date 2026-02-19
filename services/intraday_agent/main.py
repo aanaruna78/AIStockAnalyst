@@ -217,16 +217,19 @@ class IntradayAgent:
         base_qty = max(1, int(MAX_CAPITAL_PER_TRADE / entry))
         quantity = base_qty * INTRADAY_LEVERAGE
 
-        # Log iceberg info if large qty
+        # Log iceberg info if large qty (informational only — does not block trade)
         if quantity > ICEBERG_QTY_THRESHOLD:
-            iceberg = IcebergEngine.create_stock_iceberg(
-                symbol=symbol,
-                side=trade_type,
-                total_qty=quantity,
-                price=entry,
-            )
-            self.log_action("ICEBERG_ORDER", symbol,
-                f"Qty {quantity} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity}")
+            try:
+                iceberg = IcebergEngine.create_stock_iceberg(
+                    symbol=symbol,
+                    trade_type=trade_type,
+                    quantity=quantity,
+                    price=entry,
+                )
+                self.log_action("ICEBERG_ORDER", symbol,
+                    f"Qty {quantity} split into {len(iceberg.slices)} slices of ~{iceberg.slices[0].quantity}")
+            except Exception as e:
+                self.log_action("ICEBERG_INFO", symbol, f"Iceberg plan skipped: {e}")
 
         try:
             async with httpx.AsyncClient(timeout=15) as client:
