@@ -9,6 +9,17 @@ from shared.config import settings
 
 logger = logging.getLogger("DhanClient")
 
+# Index symbols need special handling for yfinance and Google Finance
+INDEX_YFINANCE_MAP = {
+    "NIFTY_50": "^NSEI",
+    "NIFTY_BANK": "^NSEBANK",
+    "NIFTY_FIN_SERVICE": "^CNXFIN",
+    "NIFTY_IT": "^CNXIT",
+    "NIFTY_NEXT_50": "^NSMIDCP",
+}
+INDEX_SYMBOLS = set(INDEX_YFINANCE_MAP.keys())
+
+
 class DhanClient:
     def __init__(self):
         self.client_id = settings.DHAN_CLIENT_ID
@@ -84,8 +95,10 @@ class DhanClient:
     def _get_yfinance_price(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Fetch real price from NSE using yfinance"""
         try:
-            # Append .NS for NSE stocks if not present
-            if not symbol.endswith(".NS"):
+            # Map index symbols to yfinance tickers; append .NS for stocks
+            if symbol in INDEX_YFINANCE_MAP:
+                yf_symbol = INDEX_YFINANCE_MAP[symbol]
+            elif not symbol.endswith(".NS"):
                 yf_symbol = f"{symbol}.NS"
             else:
                 yf_symbol = symbol
@@ -142,7 +155,9 @@ class DhanClient:
     def _get_google_finance_price(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Scrape real-time LTP from Google Finance (no API key needed)"""
         try:
-            url = f"https://www.google.com/finance/quote/{symbol}:NSE"
+            # Index symbols use :INDEXNSE suffix, stocks use :NSE
+            suffix = "INDEXNSE" if symbol in INDEX_SYMBOLS else "NSE"
+            url = f"https://www.google.com/finance/quote/{symbol}:{suffix}"
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
@@ -188,7 +203,10 @@ class DhanClient:
     def _get_yfinance_historical(self, symbol: str, interval: str) -> Optional[List[Dict]]:
         """Fetch historical data from NSE using yfinance"""
         try:
-            if not symbol.endswith(".NS"):
+            # Map index symbols to yfinance tickers; append .NS for stocks
+            if symbol in INDEX_YFINANCE_MAP:
+                yf_symbol = INDEX_YFINANCE_MAP[symbol]
+            elif not symbol.endswith(".NS"):
                 yf_symbol = f"{symbol}.NS"
             else:
                 yf_symbol = symbol
