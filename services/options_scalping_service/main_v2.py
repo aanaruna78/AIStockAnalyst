@@ -598,6 +598,22 @@ def get_nifty_spot() -> Optional[float]:
 # Cache for last spot data (includes volume from market-data-service)
 _last_spot_data: dict = {}
 
+# Spot price TTL cache to avoid re-fetching on rapid page loads
+_spot_cache: dict = {"price": None, "timestamp": 0}
+_SPOT_CACHE_TTL = 5  # 5 seconds
+
+
+def get_nifty_spot_cached() -> Optional[float]:
+    """Return spot price with 5s TTL cache."""
+    now = _time.time()
+    if _spot_cache["price"] and (now - _spot_cache["timestamp"]) < _SPOT_CACHE_TTL:
+        return _spot_cache["price"]
+    spot = get_nifty_spot()
+    if spot:
+        _spot_cache["price"] = spot
+        _spot_cache["timestamp"] = now
+    return spot
+
 # GAP-1: NSE option chain OI cache (refreshed every 3 minutes)
 _oi_cache: dict = {"data": None, "timestamp": 0}
 _OI_CACHE_TTL = 180  # 3 minutes
@@ -1161,7 +1177,7 @@ async def health():
 
 @app.get("/spot")
 async def get_spot_endpoint():
-    spot = get_nifty_spot()
+    spot = get_nifty_spot_cached()
     if not spot:
         raise HTTPException(status_code=503, detail="Could not fetch Nifty spot")
     atm = round(spot / 50) * 50
@@ -1251,6 +1267,53 @@ async def select_profile(profile_id: str):
     if learning_engine.force_profile(profile_id):
         return {"status": "forced", "profile_id": profile_id}
     raise HTTPException(status_code=404, detail=f"Profile {profile_id} not found")
+
+
+@app.get("/learning/stats")
+async def learning_stats():
+    """Combined learning stats for frontend AdminOptionsReport."""
+    bandit = learning_engine.get_bandit_stats()
+    profiles = learning_engine.get_profiles()
+    # Find active/best profile for adjustments display
+    active_profile = None
+    if bandit.get("forced_profile"):
+        active_profile = next((p for p in profiles if p["profile_id"] == bandit["forced_profile"]), None)
+    if not active_profile and profiles:
+        # Pick the profile with highest selection count
+        best_arm = max(bandit.get("arms", []), key=lambda a: a.get("n_selections", 0), default=None)
+        if best_arm:
+            active_profile = next((p for p in profiles if p["profile_id"] == best_arm["profile_id"]), profiles[0])
+        else:
+            active_profile = profiles[0]
+
+    # Compute recent performance from trade history
+    history = paper_engine.trade_history
+    recent = history[-20:] if len(history) > 20 else history
+    recent_wins = len([t for t in recent if t.get("result") == "WIN"])
+    recent_wr = (recent_wins / len(recent) * 100) if recent else 0
+
+    return {
+        "version": bandit.get("version", 1),
+        "total_analysed": bandit.get("total_selections", 0),
+        "adjustments": {
+            "confidence_threshold": active_profile.get("confidence_threshold", 70) if active_profile else 70,
+            "volume_spike_min": active_profile.get("vol_spike_min", 1.5) if active_profile else 1.5,
+            "rsi_bull_threshold": 60,
+            "rsi_bear_threshold": 40,
+            "ema_weight": 0.15,
+            "rsi_weight": 0.15,
+            "volume_weight": 0.10,
+            "sl_pct": active_profile.get("sl_pct", 0.10) if active_profile else 0.10,
+            "tp1_pct": active_profile.get("tp1_pct", 0.12) if active_profile else 0.12,
+        },
+        "recent_performance": {
+            "win_rate": round(recent_wr, 1),
+            "recent_trades": len(recent),
+            "recent_wins": recent_wins,
+        },
+        "bandit": bandit,
+        "active_profile": active_profile.get("label", "Default") if active_profile else "Default",
+    }
 
 
 @app.get("/learning/bandit")

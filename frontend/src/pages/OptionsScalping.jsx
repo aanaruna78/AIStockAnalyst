@@ -3,14 +3,14 @@ import {
     Box, Typography, Paper, Grid, Button, Chip, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Card, CardContent, CircularProgress,
     Alert, IconButton, Tooltip, Dialog, DialogTitle,
-    DialogContent, DialogActions, alpha, useTheme, Switch
+    DialogContent, DialogActions, alpha, useTheme
 } from '@mui/material';
 import {
-    RefreshCw, Zap, Activity, BarChart3, Clock, RotateCcw, Power, Radio
+    RefreshCw, Zap, Activity, BarChart3, Clock, RotateCcw, Radio
 } from 'lucide-react';
 import {
     fetchOptionsSpot, fetchOptionsChain, fetchOptionsPortfolio,
-    fetchOptionsDailyStats, resetOptionsPortfolio, fetchAutoTradeStatus, toggleAutoTrade
+    fetchOptionsDailyStats, resetOptionsPortfolio, fetchAutoTradeStatus
 } from '../services/api';
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -63,15 +63,6 @@ const OptionsScalping = () => {
     }, [loadAll]);
 
     // ─── Actions ────────────────────────────────────────────────
-    const handleToggleAutoTrade = async () => {
-        setActionLoading('toggle');
-        try {
-            const result = await toggleAutoTrade();
-            setAutoStatus(prev => prev ? { ...prev, enabled: result.enabled } : prev);
-        } catch { /* handled */ }
-        setActionLoading(null);
-    };
-
     const handleReset = async () => {
         setActionLoading('reset');
         try {
@@ -213,25 +204,18 @@ const OptionsScalping = () => {
                 <Grid size={{ xs: 6, md: 2.4 }}>
                     <Card sx={{
                         ...cardSx,
-                        border: `1px solid ${isEnabled ? alpha('#10b981', 0.4) : alpha('#ef4444', 0.3)}`,
-                        bgcolor: isEnabled ? alpha('#10b981', 0.06) : alpha('#ef4444', 0.04),
+                        border: `1px solid ${alpha('#10b981', 0.4)}`,
+                        bgcolor: alpha('#10b981', 0.06),
                     }} elevation={0}>
                         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                             <Typography variant="caption" color="text.secondary">Auto-Trade</Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Chip
-                                    icon={isEnabled ? <Radio size={12} /> : <Power size={12} />}
-                                    label={isEnabled ? 'ACTIVE' : 'OFF'}
+                                    icon={<Radio size={12} />}
+                                    label="ALWAYS ACTIVE"
                                     size="small"
-                                    color={isEnabled ? 'success' : 'default'}
-                                    sx={{ fontWeight: 700 }}
-                                />
-                                <Switch
-                                    checked={isEnabled}
-                                    onChange={handleToggleAutoTrade}
-                                    size="small"
-                                    disabled={actionLoading === 'toggle'}
                                     color="success"
+                                    sx={{ fontWeight: 700 }}
                                 />
                             </Box>
                         </CardContent>
