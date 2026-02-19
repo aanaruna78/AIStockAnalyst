@@ -791,6 +791,7 @@ def _signal_loop():
     _candle_low = float("inf")
     _candle_open = 0
     _candle_vol = 0
+    _has_real_volume = False  # Track if we have real volume data
 
     while True:
         try:
@@ -848,16 +849,22 @@ def _signal_loop():
                 _candle_open = spot
                 _candle_high = spot
                 _candle_low = spot
-                _candle_vol = int(_last_spot_data.get("volume", 0)) if _last_spot_data else 0
-                if _candle_vol <= 0:
+                _raw_vol = _last_spot_data.get("volume") if _last_spot_data else None
+                _candle_vol = int(_raw_vol) if _raw_vol and _raw_vol > 0 else 0
+                if _candle_vol > 0:
+                    _has_real_volume = True
+                else:
+                    _has_real_volume = False
                     _candle_vol = _random.randint(50000, 200000)  # Fallback if no real data
             else:
                 _candle_high = max(_candle_high, spot)
                 _candle_low = min(_candle_low, spot)
                 # Accumulate volume from real data if available
-                tick_vol = int(_last_spot_data.get("volume", 0)) if _last_spot_data else 0
+                _raw_tick_vol = _last_spot_data.get("volume") if _last_spot_data else None
+                tick_vol = int(_raw_tick_vol) if _raw_tick_vol and _raw_tick_vol > 0 else 0
                 if tick_vol > 0:
                     _candle_vol = tick_vol  # Cumulative from source
+                    _has_real_volume = True
                 else:
                     _candle_vol += _random.randint(5000, 20000)  # Fallback
 
@@ -882,9 +889,11 @@ def _signal_loop():
             profile = learning_engine.select_profile(regime_result.recommended_profile_id)
 
             # ── Momentum signal ──
+            # When volume is synthetic (no real data from source), bypass vol spike filter
+            effective_vol_spike_min = profile.vol_spike_min if _has_real_volume else 0.0
             mom_config = MomentumConfig(
                 confirm_candles=profile.confirm_candles,
-                vol_spike_min=profile.vol_spike_min,
+                vol_spike_min=effective_vol_spike_min,
                 confidence_min=profile.confidence_threshold,
                 default_entry_mode=EntryMode(profile.entry_mode),
             )
