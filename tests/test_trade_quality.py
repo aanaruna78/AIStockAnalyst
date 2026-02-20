@@ -36,19 +36,18 @@ class TestOptionsGreeksFiltering:
         from services.options_scalping_service.main_v2 import (
             PaperTradingEngine, risk_engine,
         )
-        today = _today()
         engine = PaperTradingEngine()
         engine.capital = 500000  # Large capital so capital gate doesn't fire
         engine.day_trade_count = 0
-        engine.current_date = today  # Prevent _reset_daily() from wiping test state
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
+        engine.current_date = engine._test_now.strftime("%Y-%m-%d")  # Must match _test_now to prevent _reset_daily() from wiping test state
         engine.active_trades = []
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
-        # Fix clock to market hours so time gate doesn't fire
-        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
         # Ensure risk engine is ready
-        risk_engine.reset_daily(500000, today)
+        risk_engine.reset_daily(500000, engine.current_date)
         return engine
 
     def test_reject_low_delta(self):
@@ -131,14 +130,14 @@ class TestOptionsCooldown:
         engine = PaperTradingEngine()
         engine.capital = 500000  # Large capital so capital gate doesn't fire
         engine.day_trade_count = 0
-        engine.current_date = today  # Prevent _reset_daily() from wiping test state
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
+        engine.current_date = engine._test_now.strftime("%Y-%m-%d")  # Must match _test_now to prevent _reset_daily() from wiping test state
         engine.active_trades = []
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
-        # Fix clock to market hours so time gate doesn't fire
-        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
-        risk_engine.reset_daily(500000, today)
+        risk_engine.reset_daily(500000, engine.current_date)
         return engine
 
     def test_cooldown_after_loss(self):
@@ -198,14 +197,14 @@ class TestOptionsStrikeLimit:
         today = _today()
         engine.capital = 500000  # Large capital so capital gate doesn't fire
         engine.day_trade_count = 0
-        engine.current_date = today  # Prevent _reset_daily() from wiping test state
+        # Fix clock to market hours so time gate doesn't fire
+        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
+        engine.current_date = engine._test_now.strftime("%Y-%m-%d")  # Must match _test_now to prevent _reset_daily() from wiping test state
         engine.active_trades = []
         engine._consecutive_losses = 0
         engine._last_loss_time = 0
         engine._daily_strike_entries = {}
-        # Fix clock to market hours so time gate doesn't fire
-        engine._test_now = datetime(2026, 2, 19, 11, 0, 0, tzinfo=IST)
-        risk_engine.reset_daily(500000, today)
+        risk_engine.reset_daily(500000, engine.current_date)
         return engine
 
     def test_block_after_max_entries(self):

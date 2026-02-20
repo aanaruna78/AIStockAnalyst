@@ -66,7 +66,11 @@ export default function TradeReports() {
     };
 
     useEffect(() => {
-        loadReport(null, null);
+        // Initial load — loading is already `true` from default state
+        fetchTradeReport(null, null)
+            .then(data => setReport(data))
+            .catch(() => setError('Failed to load trade report'))
+            .finally(() => setLoading(false));
     }, []);
 
     const handlePreset = (preset) => {
