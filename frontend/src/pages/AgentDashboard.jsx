@@ -52,11 +52,14 @@ const AgentDashboard = () => {
     const winTrades = tradeHistory.filter(t => (t.pnl || 0) > 0).length;
     const winRate = tradeHistory.length > 0 ? (winTrades / tradeHistory.length * 100) : 0;
 
-    // Pending signals = recs not yet traded
+    // Pending signals = recs not yet traded, HIGH conviction only (≥65%)
+    const HIGH_CONVICTION_THRESHOLD = 65;
     const tradedSymbols = new Set([...activeTrades.map(t => t.symbol), ...tradeHistory.map(t => t.symbol)]);
-    const pendingSignals = recommendations.filter(r =>
-        !tradedSymbols.has(r.symbol) && (r.conviction || r.confidence || 0) > 0
-    );
+    const pendingSignals = recommendations
+        .filter(r =>
+            !tradedSymbols.has(r.symbol) && (r.conviction || r.confidence || 0) >= HIGH_CONVICTION_THRESHOLD
+        )
+        .sort((a, b) => (b.conviction || b.confidence || 0) - (a.conviction || a.confidence || 0));
 
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
@@ -100,7 +103,7 @@ const AgentDashboard = () => {
                     { label: 'Unrealized P&L', value: formatINR(unrealizedPnl), icon: <TrendingUp size={18} />, color: unrealizedPnl >= 0 ? '#10b981' : '#ef4444' },
                     { label: 'Realized P&L', value: formatINR(realizedPnl), icon: <BarChart3 size={18} />, color: realizedPnl >= 0 ? '#10b981' : '#ef4444' },
                     { label: 'Win Rate', value: `${winRate.toFixed(0)}%`, icon: <Target size={18} />, color: '#f59e0b' },
-                    { label: 'Pending Signals', value: pendingSignals.length, icon: <Zap size={18} />, color: '#818cf8' },
+                    { label: 'High Conv. Signals', value: pendingSignals.length, icon: <Zap size={18} />, color: '#818cf8' },
                     { label: 'Cash Balance', value: formatINR(portfolio?.cash_balance || 0, 0), icon: <ShieldCheck size={18} />, color: '#10b981' },
                 ].map((item) => (
                     <Grid size={{ xs: 6, md: 2 }} key={item.label}>
@@ -239,9 +242,9 @@ const AgentDashboard = () => {
                         <CardContent sx={{ p: 0 }}>
                             <Box sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                                 <Typography variant="subtitle1" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Zap size={16} color="#f59e0b" /> Pending Signals ({pendingSignals.length})
+                                    <Zap size={16} color="#f59e0b" /> High Conviction Signals ({pendingSignals.length})
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">Awaiting agent execution</Typography>
+                                <Typography variant="caption" color="text.secondary">Only ≥65% conviction • Sorted by strength</Typography>
                             </Box>
                             <Stack sx={{ maxHeight: 600, overflowY: 'auto' }}>
                                 {pendingSignals.length === 0 ? (
@@ -253,6 +256,7 @@ const AgentDashboard = () => {
                                     const _bullish = isBullish(rec.direction);
                                     const dirColor = getDirectionColor(rec.direction);
                                     const conviction = rec.conviction || rec.confidence || 0;
+                                    const convColor = conviction >= 80 ? '#10b981' : conviction >= 65 ? '#f59e0b' : '#ef4444';
 
                                     return (
                                         <Box key={rec.id} sx={{
@@ -267,9 +271,11 @@ const AgentDashboard = () => {
                                                             <Typography variant="body2" fontWeight={700}>{rec.symbol}</Typography>
                                                             <Chip label={getDirectionLabel(rec.direction)} size="small"
                                                                 sx={{ height: 18, fontSize: '0.55rem', fontWeight: 800, bgcolor: getDirectionBg(rec.direction), color: dirColor }} />
+                                                            <Chip label={`${conviction.toFixed(0)}%`} size="small"
+                                                                sx={{ height: 18, fontSize: '0.55rem', fontWeight: 800, bgcolor: alpha(convColor, 0.1), color: convColor }} />
                                                         </Box>
                                                         <Typography variant="caption" color="text.secondary">
-                                                            {formatINR(rec.price || rec.entry)} • {conviction.toFixed(1)}% conv
+                                                            {formatINR(rec.price || rec.entry)} • {conviction >= 80 ? 'Very High' : 'High'} conviction
                                                         </Typography>
                                                     </Box>
                                                 </Box>

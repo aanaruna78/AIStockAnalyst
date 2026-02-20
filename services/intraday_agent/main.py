@@ -38,7 +38,7 @@ CHART_ANALYSIS_URL = os.getenv("CHART_ANALYSIS_URL", "http://chart-analysis-serv
 AGENT_LOOP_INTERVAL = int(os.getenv("AGENT_LOOP_INTERVAL", "15"))       # seconds — faster monitoring for intraday
 MAX_POSITIONS = int(os.getenv("MAX_POSITIONS", "5"))                     # fewer positions for tighter focus
 MAX_CAPITAL_PER_TRADE = float(os.getenv("MAX_CAPITAL_PER_TRADE", "15000"))  # margin per trade (allows ~5 positions in 100k)
-MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "40"))  # higher conviction for intraday
+MIN_CONVICTION_TO_TRADE = float(os.getenv("MIN_CONVICTION_TO_TRADE", "65"))  # high conviction only — skip medium/low
 TRAILING_SL_TRIGGER_PCT = float(os.getenv("TRAILING_SL_TRIGGER_PCT", "0.5"))  # 0.5% — tighter trailing for intraday
 INTRADAY_LEVERAGE = 3        # 3x margin leverage for intraday stocks
 ICEBERG_QTY_THRESHOLD = 500  # Use iceberg above this qty
@@ -510,10 +510,18 @@ class IntradayAgent:
         # Monitor existing positions
         await self.monitor_positions(portfolio)
 
-        # Evaluate new signals — handle ENTER, REVERSE, and HOLD
+        # Sort signals by conviction (highest first) so best opportunities are evaluated first
+        signals.sort(key=lambda r: r.get('conviction', r.get('confidence', 0)), reverse=True)
+
+        # Evaluate new signals — handle ENTER, REVERSE, and HOLD (high conviction only)
         actionable = []
         reversals = []
         for rec in signals:
+            conviction = rec.get('conviction', rec.get('confidence', 0))
+            if conviction < MIN_CONVICTION_TO_TRADE:
+                self.log_action("LOW_CONVICTION_SKIP", rec.get('symbol', ''),
+                    f"Conviction {conviction:.1f}% < {MIN_CONVICTION_TO_TRADE}% threshold — skipped")
+                continue  # skip remaining since sorted descending
             decision = await self.evaluate_signal(rec, portfolio)
             if decision == "ENTER":
                 actionable.append(rec)
