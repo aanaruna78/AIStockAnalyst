@@ -18,9 +18,6 @@ except ImportError:
     from zoneinfo import ZoneInfo
     IST = ZoneInfo("Asia/Kolkata")
 
-def _today():
-    return datetime.now(IST).strftime("%Y-%m-%d")
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -126,7 +123,6 @@ class TestOptionsCooldown:
         from services.options_scalping_service.main_v2 import (
             PaperTradingEngine, risk_engine,
         )
-        today = _today()
         engine = PaperTradingEngine()
         engine.capital = 500000  # Large capital so capital gate doesn't fire
         engine.day_trade_count = 0
@@ -194,7 +190,6 @@ class TestOptionsStrikeLimit:
             PaperTradingEngine, risk_engine,
         )
         engine = PaperTradingEngine()
-        today = _today()
         engine.capital = 500000  # Large capital so capital gate doesn't fire
         engine.day_trade_count = 0
         # Fix clock to market hours so time gate doesn't fire
