@@ -17,6 +17,11 @@ from batch_job import run_batch
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timezone
 from shared.config import settings
+import pytz
+
+_IST = pytz.timezone("Asia/Kolkata")
+SCAN_START_HOUR = 9   # 9:00 AM IST
+SCAN_END_HOUR = 16    # 4:00 PM IST
 
 app = FastAPI(title="SignalForge Ingestion Service")
 logging.basicConfig(level=logging.INFO)
@@ -211,6 +216,11 @@ def setup_scheduler():
         logger.info(f"Scheduler configured for {scan_config['interval_minutes']} minutes.")
 
 async def scheduled_scan():
+    # Only scan during market hours (9 AM – 4 PM IST)
+    now_ist = datetime.now(_IST)
+    if not (SCAN_START_HOUR <= now_ist.hour < SCAN_END_HOUR):
+        logger.info(f"Skipping scan — outside market hours ({now_ist.strftime('%H:%M')} IST). Active: {SCAN_START_HOUR}:00–{SCAN_END_HOUR}:00.")
+        return
     logger.info("Starting scheduled market scan...")
     scan_config["last_scan_time"] = datetime.now(tz=timezone.utc).isoformat()
     await run_batch(limit=10, progress_callback=progress_callback)

@@ -44,10 +44,10 @@ export const timeAgo = (timestamp) => {
     return `${Math.floor(diff / 86400)}d ago`;
 };
 
-// Conviction level
+// Conviction level — high conviction only (≥65%)
 export const getConvictionLevel = (value) => {
-    if (value >= 30) return { label: 'HIGH', color: '#10b981' };
-    if (value >= 20) return { label: 'MEDIUM', color: '#f59e0b' };
+    if (value >= 80) return { label: 'VERY HIGH', color: '#10b981' };
+    if (value >= 65) return { label: 'HIGH', color: '#22c55e' };
     return { label: 'LOW', color: '#6b7280' };
 };
 

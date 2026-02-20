@@ -440,6 +440,13 @@ async def get_active_recommendations(
 ):
     recommendations = lifecycle_engine.get_active()
     
+    # High conviction only — filter out medium/low signals (< 65%)
+    HIGH_CONVICTION_THRESHOLD = 65
+    recommendations = [
+        r for r in recommendations
+        if (r.get("conviction", 0) or r.get("confidence", 0) or 0) >= HIGH_CONVICTION_THRESHOLD
+    ]
+    
     # Simple filtering logic based on preferences
     if risk == "low":
         # Low risk users might not want bearish signals or high-volatility ones

@@ -19,6 +19,16 @@ from typing import List, Dict, Any
 import json
 import os
 from shared.config import settings
+try:
+    import pytz
+    _IST = pytz.timezone("Asia/Kolkata")
+except ImportError:
+    from zoneinfo import ZoneInfo
+    _IST = ZoneInfo("Asia/Kolkata")
+from datetime import datetime as _dt
+
+SCAN_START_HOUR = 9   # 9:00 AM IST
+SCAN_END_HOUR = 16    # 4:00 PM IST
 
 # Configure logging
 logging.basicConfig(
@@ -310,6 +320,13 @@ class PipelineRunner:
         # self.load_stocks() - Removed to allow external filtering
         
         while True:
+            # Market hours gate — only scan 9 AM to 4 PM IST
+            now_ist = _dt.now(_IST)
+            if not (SCAN_START_HOUR <= now_ist.hour < SCAN_END_HOUR):
+                logger.info(f"Outside market hours ({now_ist.strftime('%H:%M')} IST). Sleeping until next check...")
+                await asyncio.sleep(LOOP_INTERVAL)
+                continue
+
             # Cleanup stale data before starting a new cycle
             if self.stocks:
                 self.cleanup_legacy_data()

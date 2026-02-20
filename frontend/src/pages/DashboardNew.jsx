@@ -400,8 +400,9 @@ const Dashboard = () => {
     }, [recs]);
 
     const filteredRecs = useMemo(() => {
+        const HIGH_CONVICTION_THRESHOLD = 65;
         let filtered = recs
-            .filter(r => (r.conviction || r.confidence || 0) >= 10 && r.rationale !== 'AI Analysis pending...')
+            .filter(r => (r.conviction || r.confidence || 0) >= HIGH_CONVICTION_THRESHOLD && r.rationale !== 'AI Analysis pending...')
             .sort((a, b) => (b.conviction || b.confidence || 0) - (a.conviction || a.confidence || 0));
 
         if (filterTab === 'long') filtered = filtered.filter(r => isBullish(r.direction));
@@ -470,13 +471,13 @@ const Dashboard = () => {
                     )}
 
                     {/* Stats */}
-                    {!loading && <StatsBar recommendations={recs.filter(r => (r.conviction || r.confidence || 0) > 0)} />}
+                    {!loading && <StatsBar recommendations={recs.filter(r => (r.conviction || r.confidence || 0) >= 65)} />}
 
                     {/* Filters */}
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, gap: 2 }}>
                         <Tabs value={filterTab} onChange={(_, v) => setFilterTab(v)}
                             sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, fontSize: '0.8rem' } }}>
-                            <Tab value="all" label={`All (${recs.filter(r => (r.conviction || r.confidence || 0) > 0).length})`} />
+                            <Tab value="all" label={`All (${recs.filter(r => (r.conviction || r.confidence || 0) >= 65).length})`} />
                             <Tab value="long" label={`Long (${recs.filter(r => isBullish(r.direction)).length})`} sx={{ color: '#10b981' }} />
                             <Tab value="short" label={`Short (${recs.filter(r => !isBullish(r.direction)).length})`} sx={{ color: '#ef4444' }} />
                         </Tabs>
