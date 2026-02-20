@@ -79,9 +79,9 @@ class RegimeEngine:
 
     def __init__(
         self,
-        atr_min_threshold: float = 5.0,
-        vwap_magnet_ratio: float = 0.25,
-        event_spike_atr_mult: float = 2.5,
+        atr_min_threshold: float = 2.0,
+        vwap_magnet_ratio: float = 0.15,
+        event_spike_atr_mult: float = 4.0,
     ):
         self.atr_min_threshold = atr_min_threshold
         self.vwap_magnet_ratio = vwap_magnet_ratio
@@ -183,9 +183,9 @@ class RegimeEngine:
         base.recommended_profile_id = _REGIME_PROFILE_MAP[base.regime]
 
         # ── Chop-window gate: block mid-day trades unless confidence ≥ 85 ──
-        if in_chop_window and confidence < 85:
+        if in_chop_window and confidence < 70:
             base.is_trade_allowed = False
-            base.no_trade_reason = f"Chop window (11:00-13:15) + confidence {confidence:.0f} < 85"
+            base.no_trade_reason = f"Chop window (11:00-13:15) + confidence {confidence:.0f} < 70"
             return base
 
         # If classified as chop variant, block

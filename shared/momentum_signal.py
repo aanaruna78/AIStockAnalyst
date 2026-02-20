@@ -66,9 +66,9 @@ class MomentumSignal:
 class MomentumConfig:
     # Breakout
     breakout_buffer_pct: float = 0.0   # 0% buffer above ORH/H15
-    confirm_candles: int = 2           # how many closes beyond breakout
+    confirm_candles: int = 1           # how many closes beyond breakout
     # Expansion
-    expansion_ratio_min: float = 1.2
+    expansion_ratio_min: float = 1.0
     # Participation
     vol_spike_min: float = 1.5
     oi_change_min_pct: float = 2.0     # OI change threshold for options
@@ -242,7 +242,7 @@ class MomentumSignalEngine:
 
         # ── No-trade filters ──
         # VWAP magnet
-        if abs(spot - ind.vwap) < 0.25 * atr:
+        if abs(spot - ind.vwap) < 0.15 * atr:
             sig.is_filtered = True
             sig.filter_reason = "VWAP magnet zone"
             return sig

@@ -68,7 +68,7 @@ class TestRegimeEngine:
         result = self.engine.classify(
             spot=23000, vwap=22900, vwap_slope=5.0,
             atr=20, minute_of_day=630,
-            range_last_3=60,  # 60 > 2.5 * 20
+            range_last_3=90,  # 90 > 4.0 * 20 = 80
         )
         assert result.regime == Regime.EVENT_SPIKE
         assert not result.is_trade_allowed
@@ -79,9 +79,9 @@ class TestRegimeEngine:
         """ATR below threshold → no trade."""
         result = self.engine.classify(
             spot=23000, vwap=22950, vwap_slope=2.0,
-            atr=3,  # below 5.0 threshold
+            atr=1.5,  # below 2.0 threshold
             minute_of_day=560,
-            range_last_3=5,  # keep below event spike threshold (2.5*3=7.5)
+            range_last_3=3,  # keep below event spike threshold (4.0*1.5=6.0)
         )
         assert not result.is_trade_allowed
         assert "Low ATR" in result.no_trade_reason
@@ -92,7 +92,7 @@ class TestRegimeEngine:
             spot=23100, vwap=23000, vwap_slope=3.0,
             atr=20, minute_of_day=720,  # 12:00
             range_last_3=40,
-            confidence=90,  # > 85
+            confidence=90,  # > 70
         )
         assert result.is_trade_allowed
 
@@ -102,7 +102,7 @@ class TestRegimeEngine:
             spot=23100, vwap=23000, vwap_slope=3.0,
             atr=20, minute_of_day=720,  # 12:00
             range_last_3=40,
-            confidence=50,  # < 85
+            confidence=50,  # < 70
         )
         assert not result.is_trade_allowed
 

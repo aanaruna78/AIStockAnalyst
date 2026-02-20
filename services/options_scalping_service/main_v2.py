@@ -110,7 +110,7 @@ class TradeCloseRequest(BaseModel):
 # ──────────────────────────────────────────────────────────────────
 market_store = MarketDataStore(symbol="NIFTY")
 option_store = OptionDataStore()
-regime_engine = RegimeEngine(atr_min_threshold=5.0)
+regime_engine = RegimeEngine(atr_min_threshold=2.0)
 momentum_engine = MomentumSignalEngine()
 risk_engine = RiskEngine(RiskConfig(
     mode=RiskMode.PREMIUM_PCT,

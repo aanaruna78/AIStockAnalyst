@@ -191,19 +191,19 @@ class TestScenarioFakeBreakout:
 class TestScenarioIVSpike:
     """
     Scenario 4: IV Spike / Event Day
-    - Large range expansion (> 2.5× ATR)
+    - Large range expansion (> 4.0× ATR)
     - Regime classifies as EVENT_SPIKE
     - Premium simulator responds to IV change
     """
 
     def test_iv_spike_regime_and_premium(self):
-        regime = RegimeEngine(atr_min_threshold=5.0)
+        regime = RegimeEngine(atr_min_threshold=2.0)
 
-        # Event spike: range >> 2.5 * ATR
+        # Event spike: range >> 4.0 * ATR
         result = regime.classify(
             spot=23000, vwap=22900, vwap_slope=5.0,
             atr=20, minute_of_day=630,
-            range_last_3=60,  # 60 > 2.5 * 20 = 50
+            range_last_3=90,  # 90 > 4.0 * 20 = 80
         )
         assert result.regime == Regime.EVENT_SPIKE
         assert not result.is_trade_allowed

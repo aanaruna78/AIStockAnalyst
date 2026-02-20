@@ -40,7 +40,7 @@ class ProfileParams:
     profile_id: str
     label: str
     # Entry
-    confirm_candles: int = 2            # 1, 2, or 0 (retest)
+    confirm_candles: int = 1            # 1, 2, or 0 (retest)
     entry_mode: str = "BREAKOUT_CONFIRM"  # or "BREAKOUT_RETEST"
     vol_spike_min: float = 1.5
     confidence_threshold: float = 70.0
@@ -75,7 +75,7 @@ DEFAULT_PROFILES: Dict[str, ProfileParams] = {
     "P2_OPEN_CHOP": ProfileParams(
         profile_id="P2_OPEN_CHOP",
         label="Open Chop / Defensive",
-        confirm_candles=2,
+        confirm_candles=1,
         vol_spike_min=2.0,
         confidence_threshold=80.0,
         sl_pct=0.12,
@@ -88,7 +88,7 @@ DEFAULT_PROFILES: Dict[str, ProfileParams] = {
     "P3_MID_TREND": ProfileParams(
         profile_id="P3_MID_TREND",
         label="Mid-Day Trend",
-        confirm_candles=2,
+        confirm_candles=1,
         vol_spike_min=1.5,
         confidence_threshold=70.0,
         sl_pct=0.10,
@@ -99,7 +99,7 @@ DEFAULT_PROFILES: Dict[str, ProfileParams] = {
     "P4_HIGH_IV": ProfileParams(
         profile_id="P4_HIGH_IV",
         label="High IV / Volatile",
-        confirm_candles=2,
+        confirm_candles=1,
         vol_spike_min=1.5,
         confidence_threshold=78.0,
         sl_pct=0.12,
